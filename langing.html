@@ -1,0 +1,711 @@
+Landing HTML <!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mbo'ehàra — Del Paraguay al mundo</title>
+<meta name="description" content="La primera plataforma paraguaya de aprendizaje de idiomas. Guaraní, inglés, portugués y francés. Gratis. Para paraguayos y para inversores que vienen al Paraguay."/>
+<meta name="theme-color" content="#c0392b"/>
+<meta property="og:title" content="Mbo'ehàra — Del Paraguay al mundo"/>
+<meta property="og:description" content="Aprendé idiomas. Cambiá tu vida. La plataforma educativa número 1 de Paraguay."/>
+<meta property="og:url" content="https://mboehara.py"/>
+<link rel="manifest" href="/manifest.json"/>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --red:#c0392b;--navy:#1a3a5c;--gold:#d4a017;
+  --bg:#faf8f4;--card:#fff;--text:#1a1509;--muted:#8a7f72;
+  --border:#e8e2d9;--light:#f0ebe2;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;}
+a{text-decoration:none;color:inherit;}
+button{font-family:'Sora',sans-serif;cursor:pointer;}
+
+/* ── ANIMATIONS ── */
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-20px);}to{opacity:1;transform:translateX(0);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+.fade-up{animation:fadeUp .6s ease forwards;}
+.delay-1{animation-delay:.1s;opacity:0;}
+.delay-2{animation-delay:.25s;opacity:0;}
+.delay-3{animation-delay:.4s;opacity:0;}
+.delay-4{animation-delay:.55s;opacity:0;}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:rgba(250,248,244,.95);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:14px 20px;display:flex;justify-content:space-between;align-items:center;
+}
+.nav-logo{font-size:17px;font-weight:800;color:var(--text);}
+.nav-logo span{color:var(--red);}
+.nav-cta{
+  background:var(--red);color:#fff;border:none;
+  border-radius:50px;padding:10px 20px;font-size:13px;font-weight:700;
+  letter-spacing:.3px;
+}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;
+  background:linear-gradient(160deg,#1a0a08 0%,#1a3a5c 60%,#0d2135 100%);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:100px 24px 60px;
+}
+.hero::before{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);
+  border-radius:50px;padding:7px 16px;font-size:11px;font-weight:700;
+  color:rgba(255,255,255,.8);letter-spacing:1px;text-transform:uppercase;
+  margin-bottom:24px;width:fit-content;
+}
+.hero-badge .dot{width:7px;height:7px;border-radius:50%;background:#10b981;animation:pulse 2s infinite;}
+.hero h1{
+  font-size:clamp(38px,9vw,56px);font-weight:900;color:#fff;
+  line-height:1.05;letter-spacing:-1px;margin-bottom:10px;
+}
+.hero h1 em{font-style:normal;color:#f97316;}
+.hero-sub{
+  font-size:clamp(15px,4vw,18px);color:rgba(255,255,255,.65);
+  font-weight:400;line-height:1.6;margin-bottom:32px;max-width:440px;
+}
+.hero-flags{display:flex;gap:8px;margin-bottom:32px;flex-wrap:wrap;}
+.hero-flag{
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  border-radius:50px;padding:6px 14px;font-size:12px;color:rgba(255,255,255,.8);font-weight:600;
+}
+.hero-btns{display:flex;gap:12px;flex-wrap:wrap;}
+.btn-primary{
+  background:linear-gradient(135deg,var(--red),#e74c3c);
+  color:#fff;border:none;border-radius:50px;padding:16px 28px;
+  font-size:15px;font-weight:700;letter-spacing:.3px;
+  box-shadow:0 8px 24px rgba(192,57,43,.4);
+}
+.btn-secondary{
+  background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.25);
+  color:#fff;border-radius:50px;padding:15px 24px;font-size:14px;font-weight:600;
+}
+.hero-float{
+  position:absolute;right:-20px;top:50%;transform:translateY(-50%);
+  font-size:120px;opacity:.06;animation:float 6s ease-in-out infinite;
+  pointer-events:none;user-select:none;
+}
+
+/* ── STATS BAR ── */
+.stats{
+  background:var(--navy);padding:28px 20px;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+}
+.stat{text-align:center;border-right:1px solid rgba(255,255,255,.08);}
+.stat:last-child{border-right:none;}
+.stat-val{font-size:clamp(22px,5vw,30px);font-weight:900;color:#fff;line-height:1;}
+.stat-label{font-size:10px;color:rgba(255,255,255,.5);font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-top:5px;}
+
+/* ── SECTION ── */
+section{padding:60px 20px;}
+.section-tag{
+  display:inline-block;background:var(--light);color:var(--muted);
+  border-radius:50px;padding:5px 16px;font-size:10px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;
+}
+.section-tag.red{background:#fde8e8;color:var(--red);}
+.section-tag.green{background:#d8f3dc;color:#1b4332;}
+.section-tag.navy{background:#dbeafe;color:var(--navy);}
+h2{font-size:clamp(26px,7vw,36px);font-weight:900;color:var(--text);line-height:1.1;margin-bottom:12px;letter-spacing:-.5px;}
+.section-sub{font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:36px;}
+
+/* ── LANGS ── */
+.lang-grid{display:flex;flex-direction:column;gap:14px;}
+.lang-card{
+  background:var(--card);border:1.5px solid var(--border);border-radius:20px;
+  padding:20px;display:flex;align-items:center;gap:16px;
+  transition:transform .2s,box-shadow .2s;
+}
+.lang-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.08);}
+.lang-icon{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+.lang-info{flex:1;}
+.lang-name{font-size:17px;font-weight:800;color:var(--text);}
+.lang-desc{font-size:12px;color:var(--muted);margin-top:3px;}
+.lang-badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:50px;flex-shrink:0;}
+.lessons-bar{height:4px;background:var(--light);border-radius:4px;margin-top:10px;overflow:hidden;}
+.lessons-fill{height:100%;border-radius:4px;}
+
+/* ── TWO AUDIENCE ── */
+.audience{background:var(--text);border-radius:24px;overflow:hidden;margin:0 -4px;}
+.audience-half{padding:32px 24px;}
+.audience-half:first-child{border-bottom:1px solid rgba(255,255,255,.08);}
+.audience-tag{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;}
+.audience-h{font-size:22px;font-weight:800;color:#fff;margin-bottom:10px;line-height:1.2;}
+.audience-p{font-size:13px;color:rgba(255,255,255,.6);line-height:1.7;margin-bottom:20px;}
+.audience-list{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.audience-list li{font-size:13px;color:rgba(255,255,255,.75);display:flex;align-items:center;gap:10px;}
+.audience-list li::before{content:'✓';color:#10b981;font-weight:700;flex-shrink:0;}
+
+/* ── SERVICES ── */
+.services-grid{display:flex;flex-direction:column;gap:12px;}
+.svc-card{
+  background:var(--card);border:1px solid var(--border);border-radius:18px;
+  padding:18px;display:flex;gap:14px;align-items:flex-start;
+  position:relative;overflow:hidden;
+}
+.svc-line{position:absolute;left:0;top:0;bottom:0;width:4px;}
+.svc-icon{font-size:26px;flex-shrink:0;margin-top:2px;}
+.svc-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.svc-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+.svc-price{font-size:11px;font-weight:700;margin-top:8px;}
+
+/* ── HOW IT WORKS ── */
+.steps{display:flex;flex-direction:column;gap:0;}
+.step{display:flex;gap:16px;padding:20px 0;border-bottom:1px solid var(--border);}
+.step:last-child{border-bottom:none;}
+.step-num{
+  width:36px;height:36px;border-radius:50%;background:var(--text);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:800;flex-shrink:0;margin-top:2px;
+}
+.step-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.step-desc{font-size:13px;color:var(--muted);line-height:1.6;}
+
+/* ── TESTIMONIALS ── */
+.testimonials{display:flex;flex-direction:column;gap:14px;}
+.testimonial{
+  background:var(--card);border:1px solid var(--border);border-radius:18px;
+  padding:20px;position:relative;
+}
+.testimonial::before{content:'❝';position:absolute;top:12px;right:16px;font-size:32px;color:var(--light);line-height:1;}
+.t-text{font-size:14px;color:var(--text);line-height:1.7;margin-bottom:14px;font-style:italic;}
+.t-author{display:flex;align-items:center;gap:10px;}
+.t-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.t-name{font-size:13px;font-weight:700;color:var(--text);}
+.t-origin{font-size:11px;color:var(--muted);}
+.t-stars{color:#f59e0b;font-size:12px;margin-top:2px;}
+
+/* ── SPONSORS ── */
+.sponsors-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+.sponsor-chip{
+  background:var(--card);border:1px solid var(--border);border-radius:50px;
+  padding:10px 18px;font-size:13px;font-weight:600;color:var(--text);
+  display:flex;align-items:center;gap:8px;
+}
+
+/* ── PRICING ── */
+.pricing{display:flex;flex-direction:column;gap:14px;}
+.price-card{background:var(--card);border:1.5px solid var(--border);border-radius:20px;padding:24px;}
+.price-card.featured{border-color:var(--red);background:linear-gradient(135deg,#fff5f5,#fff);}
+.price-name{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.price-val{font-size:34px;font-weight:900;color:var(--text);margin-bottom:4px;}
+.price-val span{font-size:14px;font-weight:500;color:var(--muted);}
+.price-desc{font-size:12px;color:var(--muted);margin-bottom:16px;}
+.price-features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
+.price-features li{font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;}
+.price-features li::before{content:'✓';color:#10b981;font-weight:700;}
+.price-btn{
+  width:100%;border:none;border-radius:14px;padding:14px;
+  font-size:14px;font-weight:700;
+}
+.price-btn.primary{background:var(--red);color:#fff;}
+.price-btn.secondary{background:var(--light);color:var(--text);}
+
+/* ── CTA FINAL ── */
+.cta-final{
+  background:linear-gradient(135deg,var(--red) 0%,var(--navy) 100%);
+  padding:60px 24px;text-align:center;
+}
+.cta-final h2{color:#fff;margin-bottom:12px;}
+.cta-final p{color:rgba(255,255,255,.75);font-size:14px;margin-bottom:32px;line-height:1.7;}
+.cta-big{
+  background:#fff;color:var(--red);border:none;border-radius:50px;
+  padding:18px 36px;font-size:16px;font-weight:800;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);display:inline-block;
+}
+
+/* ── FOOTER ── */
+footer{background:var(--text);padding:36px 20px;color:rgba(255,255,255,.6);font-size:12px;}
+.footer-logo{font-size:18px;font-weight:800;color:#fff;margin-bottom:6px;}
+.footer-tagline{font-size:12px;color:rgba(255,255,255,.4);margin-bottom:24px;}
+.footer-links{display:flex;flex-wrap:wrap;gap:16px;margin-bottom:20px;}
+.footer-links a{color:rgba(255,255,255,.5);font-size:12px;}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:16px;font-size:11px;color:rgba(255,255,255,.3);}
+
+/* ── COUNTER ── */
+.counter{font-variant-numeric:tabular-nums;}
+
+/* ── FLOATING APP PREVIEW ── */
+.app-preview{
+  background:var(--navy);border-radius:32px;padding:20px;
+  border:3px solid rgba(255,255,255,.1);box-shadow:0 32px 80px rgba(0,0,0,.4);
+  max-width:280px;margin:32px auto 0;
+  animation:float 5s ease-in-out infinite;
+}
+.app-screen{background:#0d1117;border-radius:20px;padding:16px;overflow:hidden;}
+.app-bar{display:flex;gap:8px;margin-bottom:12px;}
+.app-dot{width:8px;height:8px;border-radius:50%;}
+.app-row{background:rgba(255,255,255,.06);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+.app-emoji{font-size:20px;}
+.app-line{height:8px;background:rgba(255,255,255,.15);border-radius:4px;flex:1;}
+.app-line-short{height:6px;background:rgba(255,255,255,.08);border-radius:4px;width:60%;margin-top:4px;}
+
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Mbo'<span>eh</span>àra</div>
+  <a href="/index.html"><button class="nav-cta">Empezar gratis →</button></a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-float">🐆</div>
+  <div class="hero-badge fade-up">
+    <span class="dot"></span>
+    Paraguay · Plataforma educativa #1
+  </div>
+  <h1 class="fade-up delay-1">
+    Aprendé idiomas.<br/>
+    Cambiá tu <em>vida.</em>
+  </h1>
+  <p class="hero-sub fade-up delay-2">
+    La primera plataforma paraguaya de idiomas. Guaraní, inglés, portugués y francés. Para paraguayos que quieren crecer y para inversores extranjeros que vienen a Paraguay.
+  </p>
+  <div class="hero-flags fade-up delay-3">
+    <span class="hero-flag">🐆 Guaraní</span>
+    <span class="hero-flag">🌎 Inglés</span>
+    <span class="hero-flag">🌿 Português</span>
+    <span class="hero-flag">🥐 Français</span>
+    <span class="hero-flag">💎 Español</span>
+  </div>
+  <div class="hero-btns fade-up delay-4">
+    <a href="/index.html"><button class="btn-primary">Empezar gratis →</button></a>
+    <a href="#como-funciona"><button class="btn-secondary">Ver cómo funciona</button></a>
+  </div>
+
+  <!-- APP PREVIEW -->
+  <div class="app-preview fade-up delay-4">
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="font-size:11px;color:rgba(255,255,255,.4);letter-spacing:1px;text-transform:uppercase;">Vista previa de la app</div>
+    </div>
+    <div class="app-screen">
+      <div class="app-bar">
+        <div class="app-dot" style="background:#ff5f57;"></div>
+        <div class="app-dot" style="background:#ffbd2e;"></div>
+        <div class="app-dot" style="background:#28ca41;"></div>
+      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:10px;font-weight:700;">Mbo'ehàra · Aprender</div>
+      <div class="app-row">
+        <span class="app-emoji">🐆</span>
+        <div><div class="app-line"></div><div class="app-line-short"></div></div>
+      </div>
+      <div class="app-row">
+        <span class="app-emoji">🌎</span>
+        <div><div class="app-line"></div><div class="app-line-short"></div></div>
+      </div>
+      <div class="app-row">
+        <span class="app-emoji">🌿</span>
+        <div><div class="app-line"></div><div class="app-line-short"></div></div>
+      </div>
+      <div class="app-row" style="background:rgba(192,57,43,.3);">
+        <span class="app-emoji">💎</span>
+        <div><div class="app-line" style="background:rgba(249,115,22,.4);"></div><div style="height:6px;background:rgba(249,115,22,.2);border-radius:4px;width:80%;margin-top:4px;"></div></div>
+        <span style="font-size:9px;color:#f97316;font-weight:700;flex-shrink:0;">PRO</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-val counter" id="s1">0</div>
+    <div class="stat-label">Usuarios</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val counter" id="s2">0</div>
+    <div class="stat-label">Lecciones</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val">5</div>
+    <div class="stat-label">Idiomas</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val counter" id="s3">0</div>
+    <div class="stat-label">Países</div>
+  </div>
+</div>
+
+<!-- IDIOMAS -->
+<section>
+  <div class="section-tag red">Nuestros idiomas</div>
+  <h2>75 lecciones reales.<br/>Sin excusas.</h2>
+  <p class="section-sub">Cada lección tiene vocabulario con audio, ejercicios y quiz. Completás a tu ritmo, sin horarios, sin pagar nada.</p>
+
+  <div class="lang-grid">
+    <div class="lang-card">
+      <div class="lang-icon" style="background:#d8f3dc;">🐆</div>
+      <div class="lang-info">
+        <div class="lang-name">Guaraní</div>
+        <div class="lang-desc">El alma de Paraguay · 15 lecciones</div>
+        <div class="lessons-bar"><div class="lessons-fill" style="width:100%;background:#52b788;"></div></div>
+      </div>
+      <div class="lang-badge" style="background:#d8f3dc;color:#1b4332;">Gratis</div>
+    </div>
+    <div class="lang-card">
+      <div class="lang-icon" style="background:#dbeafe;">🌎</div>
+      <div class="lang-info">
+        <div class="lang-name">Inglés</div>
+        <div class="lang-desc">Abre el mundo desde Paraguay · 15 lecciones</div>
+        <div class="lessons-bar"><div class="lessons-fill" style="width:100%;background:#4895ef;"></div></div>
+      </div>
+      <div class="lang-badge" style="background:#dbeafe;color:#1a3a5c;">Gratis</div>
+    </div>
+    <div class="lang-card">
+      <div class="lang-icon" style="background:#dcfce7;">🌿</div>
+      <div class="lang-info">
+        <div class="lang-name">Português</div>
+        <div class="lang-desc">Tu vecino de negocios · 15 lecciones</div>
+        <div class="lessons-bar"><div class="lessons-fill" style="width:100%;background:#70c84b;"></div></div>
+      </div>
+      <div class="lang-badge" style="background:#dcfce7;color:#2d4a00;">Gratis</div>
+    </div>
+    <div class="lang-card">
+      <div class="lang-icon" style="background:#dbeafe;">🥐</div>
+      <div class="lang-info">
+        <div class="lang-name">Français</div>
+        <div class="lang-desc">Para inversores francófonos · 15 lecciones</div>
+        <div class="lessons-bar"><div class="lessons-fill" style="width:100%;background:#3b82f6;"></div></div>
+      </div>
+      <div class="lang-badge" style="background:#dbeafe;color:#1e3a5c;">Gratis</div>
+    </div>
+    <div class="lang-card" style="border-color:#f97316;background:linear-gradient(135deg,#fff7ed,#fff);">
+      <div class="lang-icon" style="background:#fff7ed;">💎</div>
+      <div class="lang-info">
+        <div class="lang-name">Español para Inversores</div>
+        <div class="lang-desc">Para venir a invertir en Paraguay · 15 lecciones</div>
+        <div class="lessons-bar"><div class="lessons-fill" style="width:100%;background:#f97316;"></div></div>
+      </div>
+      <div class="lang-badge" style="background:#f97316;color:#fff;">PREMIUM</div>
+    </div>
+  </div>
+</section>
+
+<!-- DOS AUDIENCIAS -->
+<section style="background:var(--light);border-radius:28px;margin:0 -4px;padding:48px 24px;">
+  <div class="section-tag">¿Para quién es Mbo'ehàra?</div>
+  <h2>Diseñada para dos mundos.</h2>
+  <p class="section-sub">Un paraguayo que aprende inglés. Un francés que viene a invertir. Los dos necesitan lo mismo: entenderse.</p>
+
+  <div class="audience">
+    <div class="audience-half">
+      <div class="audience-tag" style="color:#52b788;">🇵🇾 Para paraguayos</div>
+      <div class="audience-h">El idioma que aprendés te abre puertas</div>
+      <p class="audience-p">En Paraguay el talento sobra pero el acceso no. Saber inglés o portugués puede duplicar tu salario, abrirte a empleos internacionales y conectarte con el mundo.</p>
+      <ul class="audience-list">
+        <li>Lecciones de 10 minutos que realmente sirven</li>
+        <li>Certificado oficial al completar cada idioma</li>
+        <li>Acceso a ofertas de empleo bilingüe</li>
+        <li>Sistema de referidos — invitás y ganás</li>
+        <li>Descuentos en Tupí, Tigo, Bolt y más</li>
+      </ul>
+    </div>
+    <div class="audience-half">
+      <div class="audience-tag" style="color:#f97316;">🌍 Para inversores extranjeros</div>
+      <div class="audience-h">Paraguay te espera. El idioma, también.</div>
+      <p class="audience-p">Impuesto a la renta del 10%. Residencia en pocas semanas. Energía la más barata de la región. El secreto mejor guardado de Sudamérica ya no es un secreto.</p>
+      <ul class="audience-list">
+        <li>Español orientado a negocios e inversiones</li>
+        <li>Asesores migratorios que hablan tu idioma</li>
+        <li>Apertura de empresa en 1-5 días hábiles</li>
+        <li>Traductores certificados online y presencial</li>
+        <li>Estudio de mercado antes de invertir</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICIOS -->
+<section>
+  <div class="section-tag green">Centro de servicios</div>
+  <h2>Más que un idioma.<br/>Un ecosistema.</h2>
+  <p class="section-sub">Mientras aprendés, podés contratar todos los servicios que necesitás para instalarte o invertir en Paraguay.</p>
+
+  <div class="services-grid">
+    <div class="svc-card">
+      <div class="svc-line" style="background:#4895ef;"></div>
+      <div class="svc-icon">🛂</div>
+      <div>
+        <div class="svc-name">Trámites Migratorios</div>
+        <div class="svc-desc">Residencia permanente, visa de inversión, naturalización. Acompañamiento completo.</div>
+        <div class="svc-price" style="color:#4895ef;">Desde 500.000 Gs · 12 proveedores</div>
+      </div>
+    </div>
+    <div class="svc-card">
+      <div class="svc-line" style="background:#52b788;"></div>
+      <div class="svc-icon">🏢</div>
+      <div>
+        <div class="svc-name">Apertura de Empresas</div>
+        <div class="svc-desc">EAS, SRL, SA. El proceso más ágil de la región. Desde 1 día hábil.</div>
+        <div class="svc-price" style="color:#52b788;">Desde 800.000 Gs · 8 proveedores</div>
+      </div>
+    </div>
+    <div class="svc-card">
+      <div class="svc-line" style="background:#f59e0b;"></div>
+      <div class="svc-icon">⚡</div>
+      <div>
+        <div class="svc-name">Granjas de Bitcoin</div>
+        <div class="svc-desc">Energía más barata de la región. Asesoría completa en minería de criptomonedas.</div>
+        <div class="svc-price" style="color:#f59e0b;">Consulta gratuita · 5 proveedores</div>
+      </div>
+    </div>
+    <div class="svc-card">
+      <div class="svc-line" style="background:#d97706;"></div>
+      <div class="svc-icon">🌾</div>
+      <div>
+        <div class="svc-name">Sector Agropecuario</div>
+        <div class="svc-desc">Compra de estancias, ganado, asesoría en soja, trigo y ganadería.</div>
+        <div class="svc-price" style="color:#d97706;">Consulta gratuita · 8 proveedores</div>
+      </div>
+    </div>
+    <div class="svc-card">
+      <div class="svc-line" style="background:#3b82f6;"></div>
+      <div class="svc-icon">🔍</div>
+      <div>
+        <div class="svc-name">Estudio de Mercado</div>
+        <div class="svc-desc">Análisis completo del mercado paraguayo antes de que inviertas un guaraní.</div>
+        <div class="svc-price" style="color:#3b82f6;">Desde 1.500.000 Gs · 4 proveedores</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMO FUNCIONA -->
+<section id="como-funciona" style="background:var(--light);border-radius:28px;padding:48px 24px;">
+  <div class="section-tag navy">Cómo funciona</div>
+  <h2>Tres pasos.<br/>Sin complicaciones.</h2>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div>
+        <div class="step-title">Elegís tu idioma y empezás</div>
+        <div class="step-desc">Sin registro obligatorio. Abrís la app, elegís si querés aprender inglés, português, guaraní o francés, y hacés tu primera lección en 10 minutos.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div>
+        <div class="step-title">Aprendés con audio, vocabulario y quiz</div>
+        <div class="step-desc">Cada lección tiene 5 palabras clave con pronunciación real, un ejemplo de uso, y 3 preguntas para reforzar. Ganás XP y avanzás de nivel.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div>
+        <div class="step-title">Certificado y acceso al mercado laboral</div>
+        <div class="step-desc">Al completar un idioma recibís tu certificado oficial de Mbo'ehàra. Podés postularte a empleos bilingües o acceder a los servicios de inversión.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div>
+        <div class="step-title">Compartís y ganás</div>
+        <div class="step-desc">Cada usuario tiene su código de referido personal. Compartís con amigos, ellos aprenden, vos ganás XP y desbloqueable premium. Se propaga solo.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALES -->
+<section>
+  <div class="section-tag red">Lo que dicen</div>
+  <h2>Personas reales.<br/>Resultados reales.</h2>
+
+  <div class="testimonials">
+    <div class="testimonial">
+      <p class="t-text">"Llevaba años queriendo aprender inglés pero no podía pagar clases. Con Mbo'ehàra en dos semanas ya me puedo presentar en inglés. Conseguí trabajo en una empresa brasileña."</p>
+      <div class="t-author">
+        <div class="t-avatar" style="background:#d8f3dc;">👩</div>
+        <div>
+          <div class="t-name">María G.</div>
+          <div class="t-origin">Asunción, Paraguay · Estudiante de Inglés</div>
+          <div class="t-stars">⭐⭐⭐⭐⭐</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial">
+      <p class="t-text">"Vine a Paraguay a invertir en propiedades y no hablaba ni una palabra de español. Con el curso para inversores llegué a mi primera reunión y cerré el trato yo solo. Increíble."</p>
+      <div class="t-author">
+        <div class="t-avatar" style="background:#ede9fe;">🧔</div>
+        <div>
+          <div class="t-name">Jean-Pierre D.</div>
+          <div class="t-origin">Lyon, Francia · Inversor inmobiliario</div>
+          <div class="t-stars">⭐⭐⭐⭐⭐</div>
+        </div>
+      </div>
+    </div>
+    <div class="testimonial">
+      <p class="t-text">"Lo que más me sorprendió fue el guaraní. Soy paraguayo y nunca lo había aprendido formalmente. Ahora le hablo en guaraní a mi abuela y me entiende. Ella llora de emoción."</p>
+      <div class="t-author">
+        <div class="t-avatar" style="background:#fef3c7;">👨</div>
+        <div>
+          <div class="t-name">Carlos B.</div>
+          <div class="t-origin">Fernando de la Mora · Estudiante de Guaraní</div>
+          <div class="t-stars">⭐⭐⭐⭐⭐</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SPONSORS -->
+<section style="background:var(--light);border-radius:28px;padding:40px 20px;text-align:center;">
+  <div class="section-tag" style="margin:0 auto 16px;">Nuestros auspiciantes</div>
+  <h2 style="margin-bottom:8px;">Marcas que confían<br/>en Mbo'ehàra.</h2>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:28px;">Los mejores sponsors del Paraguay eligen nuestra plataforma para llegar a usuarios activos.</p>
+  <div class="sponsors-grid">
+    <div class="sponsor-chip">🏦 Ueno Bank</div>
+    <div class="sponsor-chip">📱 Tigo Paraguay</div>
+    <div class="sponsor-chip">🔌 Tupí</div>
+    <div class="sponsor-chip">🚕 Bolt Paraguay</div>
+    <div class="sponsor-chip">🏠 RE/MAX</div>
+    <div class="sponsor-chip">🔧 Ferrex</div>
+  </div>
+  <div style="margin-top:24px;font-size:12px;color:var(--muted);">
+    ¿Querés que tu marca aparezca aquí?
+    <a href="mailto:sponsors@mboehara.py" style="color:var(--red);font-weight:700;"> Contactanos →</a>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section>
+  <div class="section-tag red">Planes</div>
+  <h2>Empezá gratis.<br/>Crecé con nosotros.</h2>
+  <p class="section-sub">Todo el contenido básico es gratis para siempre. El premium desbloquea servicios avanzados y el curso de Español para Inversores.</p>
+
+  <div class="pricing">
+    <div class="price-card">
+      <div class="price-name">Gratis</div>
+      <div class="price-val">$0 <span>/ siempre</span></div>
+      <div class="price-desc">Todo lo que necesitás para empezar</div>
+      <ul class="price-features">
+        <li>Guaraní, Inglés, Português y Français completos</li>
+        <li>75 lecciones con audio</li>
+        <li>Traductor multilingüe</li>
+        <li>Certificado de finalización</li>
+        <li>Sistema de referidos</li>
+      </ul>
+      <a href="/index.html"><button class="price-btn secondary">Empezar gratis →</button></a>
+    </div>
+    <div class="price-card featured">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="price-name" style="color:var(--red);">Premium</div>
+        <span style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:50px;">MÁS POPULAR</span>
+      </div>
+      <div class="price-val">$4.99 <span>/ mes</span></div>
+      <div class="price-desc">Para inversores y profesionales serios</div>
+      <ul class="price-features">
+        <li>Todo lo del plan gratis</li>
+        <li>Español para Inversores (15 lecciones)</li>
+        <li>Acceso al Centro de Servicios completo</li>
+        <li>Bolsa de empleo bilingüe</li>
+        <li>Prioridad en traductores</li>
+        <li>Sin anuncios</li>
+      </ul>
+      <a href="/index.html"><button class="price-btn primary">Suscribirme →</button></a>
+    </div>
+    <div class="price-card" style="border-color:var(--navy);">
+      <div class="price-name" style="color:var(--navy);">Empresas</div>
+      <div class="price-val">A medida</div>
+      <div class="price-desc">Para empresas que necesitan empleados bilingües</div>
+      <ul class="price-features">
+        <li>Publicación de búsquedas de empleo</li>
+        <li>Acceso a postulantes certificados</li>
+        <li>Banner publicitario en la plataforma</li>
+        <li>Informe mensual de alcance</li>
+      </ul>
+      <a href="mailto:empresas@mboehara.py"><button class="price-btn secondary">Contactar →</button></a>
+    </div>
+  </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-final">
+  <div style="font-size:48px;margin-bottom:16px;">🇵🇾</div>
+  <h2>Mbo'ehàra nació en Paraguay<br/>para cambiar vidas.</h2>
+  <p>El talento sobra. El acceso empieza acá.<br/>Empezá tu primera lección hoy. Gratis. Sin excusas.</p>
+  <a href="/index.html"><button class="cta-big">Empezar gratis ahora →</button></a>
+  <div style="margin-top:20px;font-size:12px;color:rgba(255,255,255,.4);">Sin registro · Sin tarjeta de crédito · Sin límite de tiempo</div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Mbo'ehàra</div>
+  <div class="footer-tagline">Del Paraguay al mundo.</div>
+  <div class="footer-links">
+    <a href="/index.html">App</a>
+    <a href="mailto:contacto@mboehara.py">Contacto</a>
+    <a href="mailto:sponsors@mboehara.py">Sponsors</a>
+    <a href="mailto:empresas@mboehara.py">Empresas</a>
+    <a href="/index.html#privacidad">Privacidad</a>
+    <a href="/index.html#terminos">Términos</a>
+  </div>
+  <div class="footer-bottom">
+    © 2025 Mbo'ehàra · Asunción, Paraguay · Hecho con ❤️ en Paraguay 🇵🇾
+  </div>
+</footer>
+
+<script>
+// ── COUNTER ANIMATION ────────────────────────────────────────────
+function animateCounter(el, target, duration=1800, suffix=''){
+  let start=0;const step=target/60;
+  const t=setInterval(()=>{
+    start=Math.min(start+step,target);
+    el.textContent=Math.floor(start).toLocaleString()+suffix;
+    if(start>=target)clearInterval(t);
+  },duration/60);
+}
+
+// Trigger on scroll into view
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      animateCounter(document.getElementById('s1'),1247);
+      animateCounter(document.getElementById('s2'),75);
+      animateCounter(document.getElementById('s3'),18);
+      observer.disconnect();
+    }
+  });
+},{threshold:.3});
+
+const statsEl=document.querySelector('.stats');
+if(statsEl)observer.observe(statsEl);
+
+// ── SCROLL REVEAL ─────────────────────────────────────────────────
+const revealObserver=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.style.opacity='1';
+      e.target.style.transform='translateY(0)';
+    }
+  });
+},{threshold:.1});
+
+document.querySelectorAll('.lang-card,.svc-card,.testimonial,.step,.price-card').forEach(el=>{
+  el.style.opacity='0';
+  el.style.transform='translateY(20px)';
+  el.style.transition='opacity .5s ease, transform .5s ease';
+  revealObserver.observe(el);
+});
+</script>
+</body>
+</html>
