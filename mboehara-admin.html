@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Mbo'ehàra · Panel Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0a0e1a;font-family:'Sora',sans-serif;color:#e2e8f0;}
+button,input,select{font-family:'Sora',sans-serif;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:#1e293b;border-radius:4px;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.fi{animation:fadeIn .35s ease forwards;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect}=React;
+
+const USERS=[
+  {id:1,name:"Carlos Benítez",email:"carlos@gmail.com",country:"🇵🇾 Paraguay",joined:"2025-01-15",lang:"Inglés",lessons:7,xp:340,streak:12,status:"active"},
+  {id:2,name:"María González",email:"maria@hotmail.com",country:"🇵🇾 Paraguay",joined:"2025-01-16",lang:"Portugués",lessons:10,xp:520,streak:5,status:"active"},
+  {id:3,name:"Jean-Pierre Dubois",email:"jp@mail.fr",country:"🇫🇷 Francia",joined:"2025-01-17",lang:"Español",lessons:4,xp:180,streak:3,status:"active"},
+  {id:4,name:"Lucas Oliveira",email:"lucas@gmail.com.br",country:"🇧🇷 Brasil",joined:"2025-01-18",lang:"Guaraní",lessons:3,xp:120,streak:1,status:"active"},
+  {id:5,name:"Ana Flores",email:"ana@yahoo.com",country:"🇵🇾 Paraguay",joined:"2025-01-19",lang:"Inglés",lessons:10,xp:680,streak:21,status:"active"},
+  {id:6,name:"Robert Mueller",email:"r.mueller@web.de",country:"🇩🇪 Alemania",joined:"2025-01-20",lang:"Español",lessons:6,xp:260,streak:8,status:"active"},
+  {id:7,name:"Yael Cohen",email:"yael@walla.co.il",country:"🇮🇱 Israel",joined:"2025-01-21",lang:"Español",lessons:5,xp:210,streak:4,status:"active"},
+  {id:8,name:"Diego Martínez",email:"diego@gmail.com",country:"🇵🇾 Paraguay",joined:"2025-01-22",lang:"Francés",lessons:2,xp:80,streak:2,status:"inactive"},
+  {id:9,name:"Sophie Martin",email:"sophie@orange.fr",country:"🇫🇷 Francia",joined:"2025-01-23",lang:"Español",lessons:8,xp:440,streak:15,status:"active"},
+  {id:10,name:"Ahmed Al-Rashid",email:"ahmed@hotmail.ae",country:"🇦🇪 Emiratos",joined:"2025-01-24",lang:"Español",lessons:9,xp:490,streak:9,status:"active"},
+  {id:11,name:"Rodrigo Ayala",email:"r.ayala@gmail.com",country:"🇵🇾 Paraguay",joined:"2025-01-25",lang:"Inglés",lessons:1,xp:40,streak:1,status:"active"},
+  {id:12,name:"Isabela Ferreira",email:"isa@gmail.com.br",country:"🇧🇷 Brasil",joined:"2025-01-26",lang:"Guaraní",lessons:5,xp:220,streak:6,status:"active"},
+];
+
+const SPONSORS=[
+  {name:"Ueno Bank",logo:"🏦",plan:"Sponsor Principal",monthly:1500000,status:"activo",clicks:234,contact:"marketing@ueno.com.py",start:"2025-01-20"},
+  {name:"Tigo Paraguay",logo:"📱",plan:"Sponsor Idioma",monthly:600000,status:"activo",clicks:187,contact:"partnerships@tigo.com.py",start:"2025-01-22"},
+  {name:"Tupí Electrodomésticos",logo:"🔌",plan:"Banner Básico",monthly:300000,status:"activo",clicks:143,contact:"marketing@tupi.com.py",start:"2025-01-23"},
+  {name:"Bolt Paraguay",logo:"🚕",plan:"Banner Básico",monthly:300000,status:"activo",clicks:98,contact:"latam@bolt.eu",start:"2025-01-24"},
+  {name:"RE/MAX Paraguay",logo:"🏠",plan:"Sponsor Inversores",monthly:200000,status:"pendiente",clicks:0,contact:"info@remax.com.py",start:"—"},
+  {name:"Ferrex",logo:"🔧",plan:"Banner Básico",monthly:150000,status:"negociando",clicks:0,contact:"ventas@ferrex.com.py",start:"—"},
+];
+
+const DAILY=[
+  {d:"Lun",l:34},{d:"Mar",l:52},{d:"Mié",l:41},{d:"Jue",l:67},{d:"Vie",l:89},{d:"Sáb",l:76},{d:"Dom",l:51},
+];
+
+const JOBS=[
+  {id:1,co:"TechCorp Brasil",role:"Asistente ES-PT",salary:"3.500.000 Gs",apps:7,status:"abierto"},
+  {id:2,co:"Agroinvest SA",role:"Coordinador ES-EN",salary:"4.200.000 Gs",apps:12,status:"abierto"},
+  {id:3,co:"Inmobiliaria Euro",role:"Asesor ES-FR",salary:"2.800.000 Gs",apps:3,status:"abierto"},
+  {id:4,co:"CryptoNode PY",role:"Técnico ES-EN",salary:"5.000.000 Gs",apps:9,status:"cerrado"},
+];
+
+const gs=n=>n.toLocaleString("es-PY")+" Gs";
+
+function Badge({s}){
+  const m={activo:["#10b981","#064e3b"],pendiente:["#f59e0b","#451a03"],negociando:["#3b82f6","#1e3a5c"],cerrado:["#6b7280","#1e293b"],inactive:["#6b7280","#1e293b"],active:["#10b981","#064e3b"]};
+  const [c,bg]=m[s]||["#6b7280","#1e293b"];
+  return <span style={{background:bg,color:c,borderRadius:20,padding:"3px 10px",fontSize:10,fontWeight:700,border:`1px solid ${c}44`}}>{s}</span>;
+}
+
+function Bar({data}){
+  const mx=Math.max(...data.map(d=>d.l));
+  return(
+    <div style={{display:"flex",alignItems:"flex-end",gap:5,height:80,marginTop:8}}>
+      {data.map((d,i)=>(
+        <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+          <div style={{width:"100%",background:"#3b82f6",borderRadius:"3px 3px 0 0",height:`${(d.l/mx)*64}px`,opacity:.85}}/>
+          <div style={{fontSize:9,color:"#475569"}}>{d.d}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Card({icon,label,val,sub,trend,color="#3b82f6"}){
+  return(
+    <div className="fi" style={{background:"#111827",border:"1px solid #1e293b",borderRadius:14,padding:"16px",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",top:-16,right:-16,width:64,height:64,borderRadius:"50%",background:color+"22"}}/>
+      <div style={{fontSize:22,marginBottom:6}}>{icon}</div>
+      <div style={{fontSize:10,color:"#475569",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:3}}>{label}</div>
+      <div style={{fontSize:24,fontWeight:800,color:"#f1f5f9"}}>{val}</div>
+      <div style={{display:"flex",alignItems:"center",gap:5,marginTop:3}}>
+        {trend&&<span style={{fontSize:10,fontWeight:700,color:trend>0?"#10b981":"#ef4444"}}>{trend>0?"↑":"↓"}{Math.abs(trend)}%</span>}
+        {sub&&<span style={{fontSize:10,color:"#475569"}}>{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+function App(){
+  const [ok,setOk]=useState(false);
+  const [form,setForm]=useState({u:"",p:""});
+  const [err,setErr]=useState("");
+  const [tab,setTab]=useState("dashboard");
+  const [search,setSearch]=useState("");
+  const [now,setNow]=useState(new Date());
+
+  useEffect(()=>{const t=setInterval(()=>setNow(new Date()),1000);return()=>clearInterval(t);},[]);
+
+  const revenue=SPONSORS.filter(s=>s.status==="activo").reduce((a,s)=>a+s.monthly,0);
+  const active=USERS.filter(u=>u.status==="active").length;
+  const lessonsTotal=USERS.reduce((a,u)=>a+u.lessons,0);
+  const filtered=USERS.filter(u=>[u.name,u.email,u.country].join(" ").toLowerCase().includes(search.toLowerCase()));
+
+  if(!ok) return(
+    <div style={{minHeight:"100vh",background:"#0a0e1a",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{width:"100%",maxWidth:360}}>
+        <div style={{textAlign:"center",marginBottom:28}}>
+          <div style={{fontSize:44,marginBottom:6}}>🇵🇾</div>
+          <div style={{fontSize:22,fontWeight:800,color:"#f1f5f9"}}>Mbo'ehàra</div>
+          <div style={{fontSize:12,color:"#475569",marginTop:3}}>Panel de Administración</div>
+        </div>
+        <div style={{background:"#111827",borderRadius:18,padding:"24px 20px",border:"1px solid #1e293b"}}>
+          <input placeholder="Usuario" value={form.u} onChange={e=>setForm({...form,u:e.target.value})}
+            style={{width:"100%",background:"#1e293b",border:"1px solid #334155",borderRadius:10,padding:"12px 14px",fontSize:13,color:"#f1f5f9",marginBottom:10,outline:"none"}}/>
+          <input placeholder="Contraseña" type="password" value={form.p} onChange={e=>setForm({...form,p:e.target.value})}
+            onKeyDown={e=>e.key==="Enter"&&(form.u==="admin"&&form.p==="mboehara2025"?setOk(true):setErr("Credenciales incorrectas"))}
+            style={{width:"100%",background:"#1e293b",border:"1px solid #334155",borderRadius:10,padding:"12px 14px",fontSize:13,color:"#f1f5f9",marginBottom:10,outline:"none"}}/>
+          {err&&<div style={{color:"#ef4444",fontSize:12,marginBottom:10}}>{err}</div>}
+          <button onClick={()=>form.u==="admin"&&form.p==="mboehara2025"?setOk(true):setErr("Credenciales incorrectas")}
+            style={{width:"100%",background:"linear-gradient(135deg,#c0392b,#1a3a5c)",color:"#fff",border:"none",borderRadius:12,padding:"14px",fontSize:14,fontWeight:700,cursor:"pointer",marginBottom:12}}>
+            Ingresar →
+          </button>
+          <div style={{background:"#1e293b",borderRadius:10,padding:"10px 12px",fontSize:11,color:"#475569"}}>
+            Demo: <strong style={{color:"#94a3b8"}}>admin</strong> / <strong style={{color:"#94a3b8"}}>mboehara2025</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const TABS=[{k:"dashboard",i:"📊",l:"Dashboard"},{k:"usuarios",i:"👥",l:"Usuarios"},{k:"sponsors",i:"📢",l:"Sponsors"},{k:"empleo",i:"💼",l:"Empleo"},{k:"config",i:"⚙️",l:"Config"}];
+
+  return(
+    <div style={{minHeight:"100vh",background:"#0a0e1a",maxWidth:480,margin:"0 auto",display:"flex",flexDirection:"column"}}>
+
+      {/* HEADER */}
+      <div style={{background:"#111827",borderBottom:"1px solid #1e293b",padding:"12px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:50}}>
+        <div>
+          <div style={{fontSize:15,fontWeight:800,color:"#f1f5f9"}}>Admin · Mbo'ehàra</div>
+          <div style={{fontSize:10,color:"#475569"}}>{now.toLocaleTimeString("es-PY")} — {now.toLocaleDateString("es-PY")}</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:5}}>
+            <div style={{width:7,height:7,borderRadius:"50%",background:"#10b981",animation:"pulse 2s infinite"}}/>
+            <span style={{fontSize:10,color:"#10b981",fontWeight:600}}>En línea</span>
+          </div>
+          <button onClick={()=>setOk(false)} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"5px 10px",color:"#64748b",fontSize:11,cursor:"pointer"}}>Salir</button>
+        </div>
+      </div>
+
+      <div style={{flex:1,paddingBottom:70,overflowY:"auto"}}>
+
+        {/* DASHBOARD */}
+        {tab==="dashboard"&&(
+          <div style={{padding:"18px"}}>
+            <div style={{fontSize:17,fontWeight:800,color:"#f1f5f9",marginBottom:3}}>Bienvenido, Richard 👋</div>
+            <div style={{fontSize:11,color:"#475569",marginBottom:18}}>Todo lo que pasa en Mbo'ehàra en tiempo real.</div>
+
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+              <Card icon="👥" label="Usuarios activos" val={active} sub={`de ${USERS.length}`} trend={18} color="#3b82f6"/>
+              <Card icon="💰" label="Ingresos/mes" val={`${(revenue/1000000).toFixed(1)}M`} sub="Gs" trend={12} color="#10b981"/>
+              <Card icon="📚" label="Lecciones completadas" val={lessonsTotal} trend={24} color="#f97316"/>
+              <Card icon="🌍" label="Países" val={[...new Set(USERS.map(u=>u.country))].length} sub="representados" color="#8b5cf6"/>
+            </div>
+
+            <div style={{background:"#111827",borderRadius:14,padding:"16px",marginBottom:12,border:"1px solid #1e293b"}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                <span style={{fontSize:13,fontWeight:700,color:"#f1f5f9"}}>Lecciones esta semana</span>
+                <span style={{fontSize:11,color:"#475569"}}>{DAILY.reduce((a,d)=>a+d.l,0)} total</span>
+              </div>
+              <Bar data={DAILY}/>
+            </div>
+
+            <div style={{background:"#111827",borderRadius:14,padding:"16px",marginBottom:12,border:"1px solid #1e293b"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9",marginBottom:12}}>💰 Sponsors activos</div>
+              {SPONSORS.filter(s=>s.status==="activo").map((s,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:18}}>{s.logo}</span>
+                    <div>
+                      <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{s.name}</div>
+                      <div style={{fontSize:10,color:"#475569"}}>{s.clicks} clicks</div>
+                    </div>
+                  </div>
+                  <span style={{fontSize:12,fontWeight:700,color:"#10b981"}}>{gs(s.monthly)}</span>
+                </div>
+              ))}
+              <div style={{borderTop:"1px solid #1e293b",paddingTop:10,marginTop:4,display:"flex",justifyContent:"space-between"}}>
+                <span style={{fontSize:12,fontWeight:700,color:"#f1f5f9"}}>Total mensual</span>
+                <span style={{fontSize:14,fontWeight:800,color:"#10b981"}}>{gs(revenue)}</span>
+              </div>
+            </div>
+
+            <div style={{background:"#111827",borderRadius:14,padding:"16px",border:"1px solid #1e293b"}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9",marginBottom:12}}>🏆 Top 5 estudiantes</div>
+              {[...USERS].sort((a,b)=>b.xp-a.xp).slice(0,5).map((u,i)=>(
+                <div key={u.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                  <div style={{width:26,height:26,borderRadius:"50%",background:["#f59e0b","#94a3b8","#b45309","#1e293b","#1e293b"][i],display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{i+1}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:12,fontWeight:600,color:"#e2e8f0"}}>{u.name}</div>
+                    <div style={{fontSize:10,color:"#475569"}}>{u.country}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:12,fontWeight:700,color:"#8b5cf6"}}>{u.xp} XP</div>
+                    <div style={{fontSize:10,color:"#f97316"}}>🔥 {u.streak}d</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* USUARIOS */}
+        {tab==="usuarios"&&(
+          <div style={{padding:"18px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div>
+                <div style={{fontSize:16,fontWeight:800,color:"#f1f5f9"}}>Usuarios</div>
+                <div style={{fontSize:11,color:"#475569"}}>{USERS.length} registrados · {active} activos</div>
+              </div>
+              <span style={{background:"#10b98122",color:"#10b981",borderRadius:20,padding:"4px 12px",fontSize:11,fontWeight:700}}>+{USERS.filter(u=>u.joined>"2025-01-22").length} esta semana</span>
+            </div>
+
+            <div style={{background:"#111827",borderRadius:12,padding:"12px 14px",marginBottom:12,border:"1px solid #1e293b"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#475569",marginBottom:8}}>Por país</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                {[...new Set(USERS.map(u=>u.country))].map(c=>(
+                  <span key={c} style={{background:"#1e293b",borderRadius:20,padding:"3px 10px",fontSize:11,color:"#94a3b8"}}>
+                    {c} <strong style={{color:"#f1f5f9"}}>{USERS.filter(u=>u.country===c).length}</strong>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <input placeholder="🔍 Buscar usuario..." value={search} onChange={e=>setSearch(e.target.value)}
+              style={{width:"100%",background:"#111827",border:"1px solid #1e293b",borderRadius:12,padding:"11px 14px",fontSize:13,color:"#f1f5f9",marginBottom:12,outline:"none"}}/>
+
+            {filtered.map(u=>(
+              <div key={u.id} style={{background:"#111827",border:"1px solid #1e293b",borderRadius:14,padding:"14px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:34,height:34,borderRadius:"50%",background:"#1e293b",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:700,color:"#94a3b8",flexShrink:0}}>{u.name[0]}</div>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9"}}>{u.name}</div>
+                      <div style={{fontSize:10,color:"#475569"}}>{u.email}</div>
+                    </div>
+                  </div>
+                  <Badge s={u.status}/>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:10,color:"#475569",marginBottom:8}}>
+                  <span>{u.country}</span><span>Desde {u.joined}</span>
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {[`📚 ${u.lang}`,`✅ ${u.lessons} lecc.`,`⭐ ${u.xp} XP`,`🔥 ${u.streak}d`].map((t,i)=>(
+                    <span key={i} style={{background:"#1e293b",borderRadius:20,padding:"3px 9px",fontSize:10,color:"#94a3b8"}}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* SPONSORS */}
+        {tab==="sponsors"&&(
+          <div style={{padding:"18px"}}>
+            <div style={{fontSize:16,fontWeight:800,color:"#f1f5f9",marginBottom:3}}>Sponsors</div>
+            <div style={{fontSize:11,color:"#475569",marginBottom:14}}>{SPONSORS.filter(s=>s.status==="activo").length} activos · {gs(revenue)}/mes</div>
+
+            <div style={{background:"linear-gradient(135deg,#065f46,#1a3a5c)",borderRadius:14,padding:"16px 18px",marginBottom:14}}>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.55)",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:3}}>Ingresos este mes</div>
+              <div style={{fontSize:30,fontWeight:800,color:"#fff"}}>{gs(revenue)}</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.6)",marginTop:4}}>Proyección anual: {gs(revenue*12)}</div>
+            </div>
+
+            {SPONSORS.map((s,i)=>(
+              <div key={i} style={{background:"#111827",border:`1px solid ${s.status==="activo"?"#10b98130":"#1e293b"}`,borderRadius:14,padding:"14px 16px",marginBottom:10}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:40,height:40,borderRadius:12,background:"#1e293b",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{s.logo}</div>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9"}}>{s.name}</div>
+                      <div style={{fontSize:11,color:"#475569"}}>{s.plan}</div>
+                    </div>
+                  </div>
+                  <Badge s={s.status}/>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:s.status==="activo"?10:0}}>
+                  {[{l:"Mensual",v:gs(s.monthly),c:"#10b981"},{l:"Clicks",v:s.clicks,c:"#3b82f6"},{l:"Inicio",v:s.start,c:"#94a3b8"},{l:"Contacto",v:s.contact,c:"#64748b"}].map((item,j)=>(
+                    <div key={j} style={{background:"#1e293b",borderRadius:10,padding:"8px 10px"}}>
+                      <div style={{fontSize  Mboe'hara -admin.html
