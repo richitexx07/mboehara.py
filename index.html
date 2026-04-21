@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="description" content="La primera plataforma paraguaya de aprendizaje de idiomas. Guarani, ingles, portugues y frances. Gratis."/>
+<meta name="theme-color" content="#c0392b"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Mboehara"/>
+<meta property="og:title" content="Mboehara - Del Paraguay al mundo"/>
+<meta property="og:description" content="Aprende idiomas. Cambia tu vida."/>
+<link rel="manifest" href="manifest.json"/>
+<title>Mbo'ehàra — Del Paraguay al mundo</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Lexend:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#faf8f4;font-family:'Sora',sans-serif;}
+button,input,textarea,select{font-family:'Sora',sans-serif;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-thumb{background:#e8e2d9;border-radius:4px;}
+.tab-active{border-bottom:2px solid currentColor!important;}
+</style>
+
+<script>
+if('serviceWorker' in navigator && location.protocol !== 'file:'){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ============================================================
+// CONFIGURACION DE SUPABASE - REEMPLAZAR CON TUS CREDENCIALES
+// ============================================================
+const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co';
+const SUPABASE_KEY = 'TU_CLAVE_ANON_AQUI';
+// ============================================================
+
+const USE_SUPABASE = SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co' && SUPABASE_KEY !== 'TU_CLAVE_ANON_AQUI';
+let _sb = null;
+if(USE_SUPABASE && window.supabase){
+  const {createClient} = window.supabase;
+  _sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+  console.log('[Mboehara] Supabase conectado');
+} else {
+  console.log('[Mboehara] Modo local (sin Supabase)');
+}
+
+// Sistema de almacenamiento unificado
+const LS = {
+  USERS:'mboehara_users', CURRENT:'mboehara_current', PROGRESS:'mboehara_progress_',
+  getUsers(){return JSON.parse(localStorage.getItem(this.USERS)||'{}');},
+  saveUsers(u){localStorage.setItem(this.USERS,JSON.stringify(u));},
+  getCurrent(){return JSON.parse(localStorage.getItem(this.CURRENT)||'null');},
+  setCurrent(u){localStorage.setItem(this.CURRENT,JSON.stringify(u));},
+  clearCurrent(){localStorage.removeItem(this.CURRENT);},
+  getProgress(uid){return JSON.parse(localStorage.getItem(this.PROGRESS+uid)||'{}');},
+  saveProgress(uid,p){localStorage.setItem(this.PROGRESS+uid,JSON.stringify(p));},
+};
+
+window.SB = {
+  async signUp(email,password,name,country){
+    if(_sb){
+      const r = await _sb.auth.signUp({email,password,options:{data:{name,country}}});
+      if(r.error) return {error:r.error};
+      return {data:{user:r.data.user}};
+    }
+    const users = LS.getUsers();
+    if(users[email]) return {error:{message:'already registered'}};
+    const refCode = Array(6).fill(0).map(()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
+    const user = {id:'u_'+Date.now(),email,password,name,country,refCode,xp:0,streak:1,level:'Principiante'};
+    users[email] = user; LS.saveUsers(users); LS.setCurrent(user);
+    return {data:{user}};
+  },
+  async signIn(email,password){
+    if(_sb){
+      const r = await _sb.auth.signInWithPassword({email,password});
+      if(r.error) return {error:r.error};
+      return {data:{user:r.data.user}};
+    }
+    const users = LS.getUsers();
+    const u = users[email];
+    if(!u || u.password !== password) return {error:{message:'Invalid login credentials'}};
+    LS.setCurrent(u);
+    return {data:{user:u}};
+  },
+  async signOut(){
+    if(_sb) await _sb.auth.signOut();
+    LS.clearCurrent();
+    return {};
+  },
+  async resetPassword(email){
+    if(_sb) return await _sb.auth.resetPasswordForEmail(email);
+    return {data:{}};
+  },
+  async getSession(){
+    if(_sb){
+      const {data} = await _sb.auth.getSession();
+      return data.session;
+    }
+    const u = LS.getCurrent();
+    return u ? {user:u} : null;
+  },
+  async getProfile(userId){
+    if(_sb){
+      const {data} = await _sb.from('profiles').select('*').eq('id',userId).single();
+      return data;
+    }
+    const u = LS.getCurrent();
+    return u ? {name:u.name,country:u.country,xp:u.xp||0,streak:u.streak||1,level:u.level||'Principiante',ref_code:u.refCode||''} : null;
+  },
+  async saveProgress(userId,lessonId,langId,score,maxScore){
+    const xpGained = score*5+10;
+    if(_sb){
+      await _sb.from('lesson_progress').upsert({user_id:userId,lesson_id:lessonId,lang_id:langId,score,max_score:maxScore,xp_gained:xpGained});
+      await _sb.rpc('update_user_xp',{p_user_id:userId,p_xp_gained:xpGained});
+      return xpGained;
+    }
+    const progress = LS.getProgress(userId);
+    progress[lessonId] = {score,lang_id:langId};
+    LS.saveProgress(userId,progress);
+    return xpGained;
+  },
+  async getProgress(userId){
+    if(_sb){
+      const {data} = await _sb.from('lesson_progress').select('*').eq('user_id',userId);
+      return data || [];
+    }
+    return Object.entries(LS.getProgress(userId)).map(([lesson_id,v])=>({lesson_id,...v}));
+  },
+  async submitServiceRequest(serviceId,name,email,message,country){
+    if(_sb) return await _sb.from('service_requests').insert({service_id:serviceId,name,email,message,country});
+    console.log('[Servicio]',{serviceId,name,email});
+    return {data:{}};
+  },
+  async applyToJob(jobId,userId,name,email,langCert,message){
+    if(_sb) return await _sb.from('job_applications').insert({job_id:jobId,user_id:userId,name,email,lang_cert:langCert,message});
+    return {data:{}};
+  },
+  async bookTranslator(translatorId,clientName,clientEmail,message){
+    if(_sb) return await _sb.from('translator_bookings').insert({translator_id:translatorId,client_name:clientName,client_email:clientEmail,message});
+    return {data:{}};
+  },
+};
+</script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+const {useState,useEffect,useRef}=React;
+
+// ── COLORS ───────────────────────────────────────────────────────────────────
+const T={bg:"#faf8f4",card:"#fff",text:"#1a1509",muted:"#8a7f72",border:"#e8e2d9",success:"#2a7d46",error:"#c0392b",light:"#f0ebe2"};
+const OPTS=["A","B","C","D"];
+
+// ── DATA HELPERS ──────────────────────────────────────────────────────────────
+const mk=(id,title,icon,vocab,quiz)=>({id,title,icon,vocab,quiz});
+const v=(w,t,ex)=>({w,t,ex});
+const q=(q,opts,ans)=>({q,opts,ans});
+
+// ── SPONSORS ──────────────────────────────────────────────────────────────────
+const SPONSORS=[
+  {name:"Ueno Bank",color:"#1a3a5c",logo:"🏦",tagline:"El banco digital del Paraguay"},
+  {name:"Tigo Paraguay",color:"#00a6fb",logo:"📱",tagline:"Conectamos a todos los paraguayos"},
+  {name:"Tupí Electrodomésticos",color:"#e63946",logo:"🔌",tagline:"Electrodomésticos #1 del Paraguay"},
+  {name:"RE/MAX Paraguay",color:"#cc0000",logo:"🏠",tagline:"Los mejores inmuebles del país"},
+  {name:"Bolt Paraguay",color:"#34d399",logo:"🚕",tagline:"Tu viaje seguro en Asunción"},
+  {name:"Ferrex",color:"#ff6b00",logo:"🔧",tagline:"Herramientas y construcción"},
+];
+
+// ── SERVICES DATA ─────────────────────────────────────────────────────────────
+const TRANSLATORS=[
+  {id:"t1",name:"María González",langs:["Español","Inglés","Guaraní"],mode:["Online","Presencial"],rate:"150.000 Gs/hr",rating:4.9,reviews:48,avatar:"👩‍💼",specialty:"Negocios e inversiones",available:true},
+  {id:"t2",name:"Carlos Benítez",langs:["Español","Portugués","Inglés"],mode:["Online"],rate:"120.000 Gs/hr",rating:4.8,reviews:31,avatar:"👨‍💼",specialty:"Contratos y legal",available:true},
+  {id:"t3",name:"Ana Flores",langs:["Español","Alemán","Inglés"],mode:["Online","Presencial"],rate:"180.000 Gs/hr",rating:5.0,reviews:22,avatar:"👩‍🎓",specialty:"Trámites migratorios",available:false},
+  {id:"t4",name:"Diego Martínez",langs:["Español","Portugués","Guaraní"],mode:["Presencial"],rate:"100.000 Gs/hr",rating:4.7,reviews:67,avatar:"👨‍🎓",specialty:"Comercio exterior",available:true},
+];
+
+const SERVICES=[
+  {
+    id:"migracion",icon:"🛂",title:"Trámites Migratorios",color:"#1a3a5c",accent:"#4895ef",bg:"#dbeafe",
+    desc:"Residencia permanente, visa de inversión, naturalización. Acompañamiento completo.",
+    items:["Residencia permanente","Visa de inversión","Reagrupación familiar","Naturalización paraguaya"],
+    price:"Desde 500.000 Gs",providers:12,time:"15-45 días hábiles"
+  },
+  {
+    id:"empresa",icon:"🏢",title:"Apertura de Empresas",color:"#1b4332",accent:"#52b788",bg:"#d8f3dc",
+    desc:"SRL, SA, EAS. Apertura rápida. Paraguay tiene el proceso más ágil de la región.",
+    items:["EAS (desde 1 día)","SRL / SA","Cuenta bancaria empresarial","Número de RUC"],
+    price:"Desde 800.000 Gs",providers:8,time:"1-5 días hábiles"
+  },
+  {
+    id:"impoexpo",icon:"📦",title:"Import / Export",color:"#7c2d12",accent:"#f97316",bg:"#fff7ed",
+    desc:"Asesoramiento en comercio exterior, zonas francas, despacho aduanero y logística.",
+    items:["Zonas francas Ciudad del Este","Despacho aduanero","Logística internacional","Regímenes especiales"],
+    price:"Consulta gratuita",providers:6,time:"Variable según operación"
+  },
+  {
+    id:"inmuebles",icon:"🏠",title:"Inversión Inmobiliaria",color:"#5b21b6",accent:"#8b5cf6",bg:"#ede9fe",
+    desc:"Conectamos con las mejores inmobiliarias de Paraguay para inversores extranjeros.",
+    items:["Compra de propiedades","Alquiler corporativo","Due diligence legal","Financiamiento"],
+    price:"Sin costo inicial",providers:15,time:"Inmediato"
+  },
+  {
+    id:"impuestos",icon:"📊",title:"Asesoría Fiscal",color:"#065f46",accent:"#10b981",bg:"#d1fae5",
+    desc:"Paraguay tiene uno de los sistemas impositivos más bajos del mundo. Te explicamos cómo aprovecharlos.",
+    items:["Impuesto a la renta (10%)","IVA y facturación","Declaraciones anuales","Planificación fiscal"],
+    price:"Desde 300.000 Gs",providers:9,time:"Variable"
+  },
+  {
+    id:"agro",icon:"🌾",title:"Sector Agropecuario",color:"#78350f",accent:"#d97706",bg:"#fef3c7",
+    desc:"Paraguay es potencia agropecuaria mundial. Conectamos inversores con estancias, productores y asesores del campo.",
+    items:["Compra y venta de estancias","Asesoría en producción agrícola","Soja, trigo, maíz, ganadería","Colonias y campos agrícolas","Financiamiento rural"],
+    price:"Consulta gratuita",providers:8,time:"Variable"
+  },
+  {
+    id:"animales",icon:"🐄",title:"Ganadería y Animales",color:"#7c3aed",accent:"#8b5cf6",bg:"#ede9fe",
+    desc:"Paraguay es el 5to exportador mundial de carne. Conectamos con criadores, remates y exportadores.",
+    items:["Ganado vacuno y bovino","Caballos y equinos","Cerdos y aves de corral","Exportación certificada","Sanidad animal y trazabilidad"],
+    price:"Desde 500.000 Gs",providers:6,time:"Variable"
+  },
+  {
+    id:"mercado",icon:"🔍",title:"Estudio de Mercado",color:"#0f172a",accent:"#3b82f6",bg:"#eff6ff",
+    desc:"¿Querés instalar tu empresa en Paraguay? Hacemos un estudio completo antes de que inviertas un solo guaraní.",
+    items:["Análisis de competencia local","Perfil del consumidor paraguayo","Estudio de precios y márgenes","Identificación de proveedores clave","Zonas estratégicas recomendadas"],
+    price:"Desde 1.500.000 Gs",providers:4,time:"7-15 días hábiles"
+  },
+  {
+    id:"crypto",icon:"⚡",title:"Granjas de Bitcoin",color:"#b45309",accent:"#f59e0b",bg:"#fffbeb",
+    desc:"Paraguay tiene la energía más barata de la región. El destino ideal para minar Bitcoin y criptomonedas con máxima rentabilidad.",
+    items:["Asesoría en minería de Bitcoin y Ethereum","Gestión y contratos de energía eléctrica","Proveedores de equipos ASIC y GPU","Marco legal paraguayo para crypto","Conexión con inversores del sector"],
+    price:"Consulta gratuita",providers:5,time:"Variable"
+  },
+];
+
+// ── LANGS & LESSONS (abbreviated for space — same 40 lessons as before) ───────
+const LANGS={
+  guarani:{id:"guarani",name:"Guaraní",emoji:"🐆",premium:false,tagline:"El alma de Paraguay",color:"#1b4332",accent:"#52b788",bg:"#d8f3dc",
+    units:[
+      {title:"Básico",subtitle:"Primeras palabras",lessons:[
+        mk("g1","Saludos","👋",[v("Mba'éichapa","¿Cómo estás?","Mba'éichapa, amigo!"),v("Iporãite","Estoy bien","Iporãite, ha nde?"),v("Aguyje","Gracias","Aguyje porã!"),v("Rohayhu","Te quiero","Rohayhu, mamá"),v("Jajotopáta","Hasta luego","Jajotopáta!")],[q("¿Cómo se dice '¿Cómo estás?'",["Aguyje","Mba'éichapa","Rohayhu","Iporãite"],1),q("¿Qué significa 'Aguyje'?",["Hasta luego","Te quiero","Gracias","Hola"],2),q("¿Cómo se dice 'Te quiero'?",["Iporãite","Aguyje","Mba'éichapa","Rohayhu"],3)]),
+        mk("g2","Números","🔢",[v("Peteĩ","Uno","Peteĩ mitã"),v("Mokõi","Dos","Mokõi árape"),v("Mbohapy","Tres","Mbohapy"),v("Irundy","Cuatro","Irundy"),v("Po","Cinco","Po = mano")],[q("¿Cuánto es 'Mokõi'?",["1","2","3","4"],1),q("¿Cómo se dice 'Tres'?",["Peteĩ","Irundy","Mbohapy","Po"],2),q("'Po' es:",["4","3","6","5"],3)]),
+        mk("g3","Familia","👨‍👩‍👧",[v("Sy","Mamá","Che sy"),v("Túva","Papá","Nde túva"),v("Mitã'i","Niño","Mitã'i porã"),v("Memby","Hijo/a","Che memby"),v("Ryke'y","Hermano mayor","Che ryke'y")],[q("¿Cómo se dice 'Mamá'?",["Túva","Memby","Sy","Ryke'y"],2),q("'Che memby' es:",["Mi mamá","Mi hermano","Mi hijo/a","Mi papá"],2),q("'Túva' significa:",["Hijo","Papá","Mamá","Hermano"],1)]),
+        mk("g4","Colores","🎨",[v("Pytã","Rojo","Pytã ha sa'yju"),v("Sa'yju","Amarillo","Sa'yju iporã"),v("Hovy","Azul","Hovy ára"),v("Hovy'u","Verde","Ka'aguy hovy'u"),v("Morotĩ","Blanco","Morotĩ iporã")],[q("¿Cómo se dice 'Rojo'?",["Sa'yju","Pytã","Hovy","Morotĩ"],1),q("'Hovy' es:",["Rojo","Amarillo","Azul","Verde"],2),q("'Morotĩ' es:",["Negro","Verde","Azul","Blanco"],3)]),
+      ]},
+      {title:"Intermedio",subtitle:"Vida cotidiana",lessons:[
+        mk("g5","Comida","🍽️",[v("Mandi'o","Mandioca","Mandi'o ro'u"),v("Avatí","Maíz","Avatí vevúi"),v("So'o","Carne","So'o chugui"),v("Ka'ay","Mate","Ka'ay ro'u"),v("Ñana","Fruta","Ñana porã")],[q("¿Cómo se dice 'Carne'?",["Mandi'o","Avatí","So'o","Ka'ay"],2),q("'Mandi'o' es:",["Maíz","Carne","Fruta","Mandioca"],3),q("'Ka'ay' es:",["Carne","Mate","Fruta","Maíz"],1)]),
+        mk("g6","Mercado","🛒",[v("Mba'e reñói?","¿Cuánto vale?","Mba'e reñói ko?"),v("Hy'a","Caro","Hy'a hete"),v("Mbarete","Barato","Mbarete ha porã"),v("Roipota","Queremos","Roipota peteĩ"),v("Ndaipóri","No hay","Ndaipóri")],[q("¿Cómo se pregunta el precio?",["Roipota","Hy'a","Mba'e reñói?","Ndaipóri"],2),q("'Hy'a' es:",["Barato","Caro","No hay","Queremos"],1),q("'Ndaipóri' es:",["Caro","No hay","Queremos","¿Cuánto?"],1)]),
+        mk("g7","Frases","💬",[v("Che réra...","Mi nombre es...","Che réra Richard"),v("Aipota","Quiero","Aipota oĩ"),v("Ndaipotái","No quiero","Ndaipotái"),v("Upéi","Después","Upéi rojaho"),v("Añete","De verdad","Añete piko?")],[q("'Che réra' es:",["Quiero","Mi nombre es","No quiero","Después"],1),q("¿Cómo se dice 'Quiero'?",["Ndaipotái","Upéi","Aipota","Añete"],2),q("'Añete' es:",["Después","De verdad","No quiero","Mi nombre"],1)]),
+      ]},
+      {title:"Avanzado",subtitle:"Cultura y éxito",lessons:[
+        mk("g8","Cultura","🇵🇾",[v("Ñande Reko","Nuestra forma de ser","Ñande Reko"),v("Tekove","Vida","Tekove porã"),v("Mburuvicha","Jefe","Che mburuvicha"),v("Ñandejára","Nuestro Señor","Ñandejára pytyvõ"),v("Yvypóra","Persona","Yvypóra porã")],[q("'Tekove' es:",["Jefe","Vida","Dios","Persona"],1),q("'Mburuvicha' es:",["Vida","Persona","Jefe","Dios"],2),q("'Yvypóra porã' es:",["Buena vida","Mi jefe","Buena persona","Señor"],2)]),
+        mk("g9","Trabajo","💼",[v("Rembiapo","Tu trabajo","Nde rembiapo"),v("Pysyrõ","Ayudar","Repysyrõ chéve"),v("Joaju","Reunión","Oĩ joaju"),v("Mba'e rejapo?","¿Qué hacés?","Mba'e rejapo?"),v("Mbareté","Fuerza","Mbareté nde")],[q("'Joaju' es:",["Trabajar","Ayudar","Reunión","¿Qué hacés?"],2),q("'Mba'e rejapo?' es:",["¿Reunión?","¿Cuánto?","¿Qué hacés?","¿Cómo estás?"],2),q("'Mbareté' es:",["Reunión","Fuerza","Trabajo","Ayudar"],1)]),
+        mk("g10","Éxito","🏆",[v("Mba'e porã","Algo bueno","Ko mba'e porã"),v("Ojeporu porã","Funciona bien","Ojeporu porã"),v("Rojave yvate","¡Llegamos alto!","Rojave yvate!"),v("Porãve","Mejor","Porãve ko"),v("Añeterei","¡De verdad!","Añeterei iporã!")],[q("'Ojeporu porã' es:",["Algo bueno","Funciona bien","Llegamos alto","Mejor"],1),q("'Rojave yvate' expresa:",["Algo bueno","Funciona","Éxito","Mejor"],2),q("'Añeterei' expresa:",["Duda","Negación","Entusiasmo","Tristeza"],2)]),
+      ]},
+      {title:"Nivel Experto",subtitle:"Guaraní avanzado",lessons:[
+        mk("g11","Naturaleza","🌿",[v("Ka'aguy","Selva / Bosque","Ka'aguy hovy'u = bosque verde"),v("Ysyry","Río","Ysyry porã = río bonito"),v("Yvytu","Viento","Yvytu mombyry = viento lejano"),v("Ára","Cielo / Día","Ko ára iporã = hoy es lindo"),v("Ybytu","Aire fresco","Ybytu porã = aire puro")],[q("'Ka'aguy' es:",["Río","Viento","Selva/Bosque","Cielo"],2),q("'Ysyry' es:",["Selva","Río","Viento","Aire"],1),q("'Ára' significa:",["Bosque","Río","Cielo/Día","Viento"],2)]),
+        mk("g12","Emociones","❤️",[v("Che py'a hory","Estoy feliz","Che py'a hory hete!"),v("Che reikuaarã","Te extraño","Che reikuaarã porã"),v("Mba'e porã!","¡Qué bueno!","Mba'e porã ko ara!"),v("Che rasy","Me duele / Estoy triste","Che rasy py'a = triste"),v("Aguyjevéta","Muchas gracias","Aguyjevéta nde rendapy")],[q("'Che py'a hory' es:",["Estoy triste","Te extraño","Estoy feliz","Me duele"],2),q("'Aguyjevéta' es:",["Te quiero","Hasta luego","Muchas gracias","¡Qué bueno!"],2),q("'Che rasy' significa:",["Feliz","Extraño","Gracias","Me duele/Triste"],3)]),
+        mk("g13","Mercado 4","🛍️",[v("Mba'e reñói?","¿Cuánto vale?","Mba'e reñói ko?"),v("Oñepyrũ","Empieza / Comienza","Oñepyrũ la venta"),v("Tembi'u","Comida / Alimento","Tembi'u iporã"),v("Mba'erépa?","¿Por qué?","Mba'erépa hy'a?"),v("Upéicha","Así es / Así","Upéicha ko = así es")],[q("'Mba'erépa' es:",["¿Cuánto?","¿Dónde?","¿Por qué?","¿Cuándo?"],2),q("'Tembi'u' es:",["Ropa","Comida","Agua","Dinero"],1),q("'Upéicha' significa:",["¿Por qué?","Empieza","Así es","Comida"],2)]),
+        mk("g14","Guaraní Moderno","📱",[v("Internetpe","En internet","Ha'e guaranípe ojogua internetpe"),v("Mba'éicha ojapo?","¿Cómo funciona?","Mba'éicha ojapo ko?"),v("Oñemoherakuã","Se registra","Oñemoherakuã Mbo'eharápe"),v("Ñe'ẽ pyahu","Palabra nueva","Ñe'ẽ pyahu roikuaa"),v("Ñamoî","Lo ponemos / Instalamos","Ñamoî la aplicación")],[q("'Ñe'ẽ pyahu' es:",["Internet","Funciona","Palabra nueva","Instalamos"],2),q("'Ñamoî' es:",["Registrar","Lo ponemos/Instalamos","Internet","¿Cómo?"],1),q("'Mba'éicha ojapo?' es:",["¿Cuánto vale?","¿Por qué?","¿Cómo funciona?","¿Dónde?"],2)]),
+        mk("g15","Orgullo Guaraní","🏆",[v("Ñande ñe'ẽ","Nuestro idioma","Ñande ñe'ẽ iporã hete"),v("Mbo'ehára","Enseñar / Plataforma","Mbo'ehára ñandéve"),v("Ñamoporãve","Lo mejoramos","Ñamoporãve ko app"),v("Paraguái","Paraguay","Paraguáipe oiko ñande"),v("Ñande mba'e","Nuestras cosas","Ñande mba'e iporã")],[q("'Ñande ñe'ẽ' es:",["Nuestro país","Nuestro idioma","Nuestros amigos","Nuestra comida"],1),q("'Mbo'ehára' significa:",["Aprender","Enseñar/Plataforma","Mejorar","País"],1),q("'Ñamoporãve' es:",["Lo empeoramos","Lo enseñamos","Lo mejoramos","Lo vendemos"],2)]),
+      ]},
+    ]},
+  ingles:{id:"ingles",name:"Inglés",emoji:"🌎",premium:false,tagline:"
