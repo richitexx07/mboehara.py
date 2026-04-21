@@ -1,0 +1,52 @@
+{
+  "name": "Mbo'ehàra — Del Paraguay al mundo",
+  "short_name": "Mbo'ehàra",
+  "description": "Aprendé idiomas. Cambiá tu vida. La primera plataforma educativa de Paraguay.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#c0392b",
+  "orientation": "portrait",
+  "lang": "es-PY",
+  "scope": "/",
+  "categories": ["education", "lifestyle"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "label": "Pantalla de inicio",
+      "sizes": "390x844",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Aprender Inglés",
+      "url": "/?lang=ingles",
+      "description": "Ir directo a las lecciones de inglés"
+    },
+    {
+      "name": "Traductor",
+      "url": "/?tab=traductor",
+      "description": "Abrir el traductor"
+    },
+    {
+      "name": "Servicios",
+      "url": "/?tab=servicios",
+      "description": "Centro de servicios para inversores"
+    }
+  ]
+}
+Manifiest.json
