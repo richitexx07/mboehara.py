@@ -1,3 +1,7 @@
+Gmail	Alan avalos arriola <lallamaqueinflamahk@gmail.com>
+Index
+richard Avalos Arriola <richitexx07@gmail.com>	22 de abril de 2026 a las 20:20
+Para: Alan avalos arriola <lallamaqueinflamahk@gmail.com>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -25,12 +29,11 @@ button,input,textarea,select{font-family:'Sora',sans-serif;}
 ::-webkit-scrollbar-thumb{background:#e8e2d9;border-radius:4px;}
 .tab-active{border-bottom:2px solid currentColor!important;}
 </style>
-
 <script>
 if('serviceWorker' in navigator && location.protocol !== 'file:'){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  });
+window.addEventListener('load',()=>{
+navigator.serviceWorker.register('sw.js').catch(()=>{});
+});
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -41,232 +44,1339 @@ if('serviceWorker' in navigator && location.protocol !== 'file:'){
 const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co';
 const SUPABASE_KEY = 'TU_CLAVE_ANON_AQUI';
 // ============================================================
-
 const USE_SUPABASE = SUPABASE_URL !== 'https://TU_PROYECTO.supabase.co' && SUPABASE_KEY !== 'TU_CLAVE_ANON_AQUI';
 let _sb = null;
 if(USE_SUPABASE && window.supabase){
-  const {createClient} = window.supabase;
-  _sb = createClient(SUPABASE_URL, SUPABASE_KEY);
-  console.log('[Mboehara] Supabase conectado');
+const {createClient} = window.supabase;
+_sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+console.log('[Mboehara] Supabase conectado');
 } else {
-  console.log('[Mboehara] Modo local (sin Supabase)');
+console.log('[Mboehara] Modo local (sin Supabase)');
 }
-
 // Sistema de almacenamiento unificado
 const LS = {
-  USERS:'mboehara_users', CURRENT:'mboehara_current', PROGRESS:'mboehara_progress_',
-  getUsers(){return JSON.parse(localStorage.getItem(this.USERS)||'{}');},
-  saveUsers(u){localStorage.setItem(this.USERS,JSON.stringify(u));},
-  getCurrent(){return JSON.parse(localStorage.getItem(this.CURRENT)||'null');},
-  setCurrent(u){localStorage.setItem(this.CURRENT,JSON.stringify(u));},
-  clearCurrent(){localStorage.removeItem(this.CURRENT);},
-  getProgress(uid){return JSON.parse(localStorage.getItem(this.PROGRESS+uid)||'{}');},
-  saveProgress(uid,p){localStorage.setItem(this.PROGRESS+uid,JSON.stringify(p));},
+USERS:'mboehara_users', CURRENT:'mboehara_current', PROGRESS:'mboehara_progress_',
+getUsers(){return JSON.parse(localStorage.getItem(this.USERS)||'{}');},
+saveUsers(u){localStorage.setItem(this.USERS,JSON.stringify(u));},
+getCurrent(){return JSON.parse(localStorage.getItem(this.CURRENT)||'null');},
+setCurrent(u){localStorage.setItem(this.CURRENT,JSON.stringify(u));},
+clearCurrent(){localStorage.removeItem(this.CURRENT);},
+getProgress(uid){return JSON.parse(localStorage.getItem(this.PROGRESS+uid)||'{}');},
+saveProgress(uid,p){localStorage.setItem(this.PROGRESS+uid,JSON.stringify(p));},
 };
-
 window.SB = {
-  async signUp(email,password,name,country){
-    if(_sb){
-      const r = await _sb.auth.signUp({email,password,options:{data:{name,country}}});
-      if(r.error) return {error:r.error};
-      return {data:{user:r.data.user}};
-    }
-    const users = LS.getUsers();
-    if(users[email]) return {error:{message:'already registered'}};
-    const refCode = Array(6).fill(0).map(()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
-    const user = {id:'u_'+Date.now(),email,password,name,country,refCode,xp:0,streak:1,level:'Principiante'};
-    users[email] = user; LS.saveUsers(users); LS.setCurrent(user);
-    return {data:{user}};
-  },
-  async signIn(email,password){
-    if(_sb){
-      const r = await _sb.auth.signInWithPassword({email,password});
-      if(r.error) return {error:r.error};
-      return {data:{user:r.data.user}};
-    }
-    const users = LS.getUsers();
-    const u = users[email];
-    if(!u || u.password !== password) return {error:{message:'Invalid login credentials'}};
-    LS.setCurrent(u);
-    return {data:{user:u}};
-  },
-  async signOut(){
-    if(_sb) await _sb.auth.signOut();
-    LS.clearCurrent();
-    return {};
-  },
-  async resetPassword(email){
-    if(_sb) return await _sb.auth.resetPasswordForEmail(email);
-    return {data:{}};
-  },
-  async getSession(){
-    if(_sb){
-      const {data} = await _sb.auth.getSession();
-      return data.session;
-    }
-    const u = LS.getCurrent();
-    return u ? {user:u} : null;
-  },
-  async getProfile(userId){
-    if(_sb){
-      const {data} = await _sb.from('profiles').select('*').eq('id',userId).single();
-      return data;
-    }
-    const u = LS.getCurrent();
-    return u ? {name:u.name,country:u.country,xp:u.xp||0,streak:u.streak||1,level:u.level||'Principiante',ref_code:u.refCode||''} : null;
-  },
-  async saveProgress(userId,lessonId,langId,score,maxScore){
-    const xpGained = score*5+10;
-    if(_sb){
-      await _sb.from('lesson_progress').upsert({user_id:userId,lesson_id:lessonId,lang_id:langId,score,max_score:maxScore,xp_gained:xpGained});
-      await _sb.rpc('update_user_xp',{p_user_id:userId,p_xp_gained:xpGained});
-      return xpGained;
-    }
-    const progress = LS.getProgress(userId);
-    progress[lessonId] = {score,lang_id:langId};
-    LS.saveProgress(userId,progress);
-    return xpGained;
-  },
-  async getProgress(userId){
-    if(_sb){
-      const {data} = await _sb.from('lesson_progress').select('*').eq('user_id',userId);
-      return data || [];
-    }
-    return Object.entries(LS.getProgress(userId)).map(([lesson_id,v])=>({lesson_id,...v}));
-  },
-  async submitServiceRequest(serviceId,name,email,message,country){
-    if(_sb) return await _sb.from('service_requests').insert({service_id:serviceId,name,email,message,country});
-    console.log('[Servicio]',{serviceId,name,email});
-    return {data:{}};
-  },
-  async applyToJob(jobId,userId,name,email,langCert,message){
-    if(_sb) return await _sb.from('job_applications').insert({job_id:jobId,user_id:userId,name,email,lang_cert:langCert,message});
-    return {data:{}};
-  },
-  async bookTranslator(translatorId,clientName,clientEmail,message){
-    if(_sb) return await _sb.from('translator_bookings').insert({translator_id:translatorId,client_name:clientName,client_email:clientEmail,message});
-    return {data:{}};
-  },
+async signUp(email,password,name,country){
+if(_sb){
+const r = await _sb.auth.signUp({email,password,options:{data:{name,country}}});
+if(r.error) return {error:r.error};
+return {data:{user:r.data.user}};
+}
+const users = LS.getUsers();
+if(users[email]) return {error:{message:'already registered'}};
+const refCode = Array(6).fill(0).map(()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
+const user = {id:'u_'+Date.now(),email,password,name,country,refCode,xp:0,streak:1,level:'Principiante'};
+users[email] = user; LS.saveUsers(users); LS.setCurrent(user);
+return {data:{user}};
+},
+async signIn(email,password){
+if(_sb){
+const r = await _sb.auth.signInWithPassword({email,password});
+if(r.error) return {error:r.error};
+return {data:{user:r.data.user}};
+}
+const users = LS.getUsers();
+const u = users[email];
+if(!u || u.password !== password) return {error:{message:'Invalid login credentials'}};
+LS.setCurrent(u);
+return {data:{user:u}};
+},
+async signOut(){
+if(_sb) await _sb.auth.signOut();
+LS.clearCurrent();
+return {};
+},
+async resetPassword(email){
+if(_sb) return await _sb.auth.resetPasswordForEmail(email);
+return {data:{}};
+},
+async getSession(){
+if(_sb){
+const {data} = await _sb.auth.getSession();
+return data.session;
+}
+const u = LS.getCurrent();
+return u ? {user:u} : null;
+},
+async getProfile(userId){
+if(_sb){
+const {data} = await _sb.from('profiles').select('*').eq('id',userId).single();
+return data;
+}
+const u = LS.getCurrent();
+return u ? {name:u.name,country:u.country,xp:u.xp||0,streak:u.streak||1,level:u.level||'Principiante',ref_code:u.refCode||''} : null;
+},
+async saveProgress(userId,lessonId,langId,score,maxScore){
+const xpGained = score*5+10;
+if(_sb){
+await _sb.from('lesson_progress').upsert({user_id:userId,lesson_id:lessonId,lang_id:langId,score,max_score:maxScore,xp_gained:xpGained});
+await _sb.rpc('update_user_xp',{p_user_id:userId,p_xp_gained:xpGained});
+return xpGained;
+}
+const progress = LS.getProgress(userId);
+progress[lessonId] = {score,lang_id:langId};
+LS.saveProgress(userId,progress);
+return xpGained;
+},
+async getProgress(userId){
+if(_sb){
+const {data} = await _sb.from('lesson_progress').select('*').eq('user_id',userId);
+return data || [];
+}
+return Object.entries(LS.getProgress(userId)).map(([lesson_id,v])=>({lesson_id,...v}));
+},
+async submitServiceRequest(serviceId,name,email,message,country){
+if(_sb) return await _sb.from('service_requests').insert({service_id:serviceId,name,email,message,country});
+console.log('[Servicio]',{serviceId,name,email});
+return {data:{}};
+},
+async applyToJob(jobId,userId,name,email,langCert,message){
+if(_sb) return await _sb.from('job_applications').insert({job_id:jobId,user_id:userId,name,email,lang_cert:langCert,message});
+return {data:{}};
+},
+async bookTranslator(translatorId,clientName,clientEmail,message){
+if(_sb) return await _sb.from('translator_bookings').insert({translator_id:translatorId,client_name:clientName,client_email:clientEmail,message});
+return {data:{}};
+},
 };
 </script>
 </head>
 <body>
 <div id="root"></div>
-
 <script type="text/babel">
-
 const {useState,useEffect,useRef}=React;
-
 // ── COLORS ───────────────────────────────────────────────────────────────────
 const T={bg:"#faf8f4",card:"#fff",text:"#1a1509",muted:"#8a7f72",border:"#e8e2d9",success:"#2a7d46",error:"#c0392b",light:"#f0ebe2"};
 const OPTS=["A","B","C","D"];
-
 // ── DATA HELPERS ──────────────────────────────────────────────────────────────
 const mk=(id,title,icon,vocab,quiz)=>({id,title,icon,vocab,quiz});
 const v=(w,t,ex)=>({w,t,ex});
 const q=(q,opts,ans)=>({q,opts,ans});
-
 // ── SPONSORS ──────────────────────────────────────────────────────────────────
 const SPONSORS=[
-  {name:"Ueno Bank",color:"#1a3a5c",logo:"🏦",tagline:"El banco digital del Paraguay"},
-  {name:"Tigo Paraguay",color:"#00a6fb",logo:"📱",tagline:"Conectamos a todos los paraguayos"},
-  {name:"Tupí Electrodomésticos",color:"#e63946",logo:"🔌",tagline:"Electrodomésticos #1 del Paraguay"},
-  {name:"RE/MAX Paraguay",color:"#cc0000",logo:"🏠",tagline:"Los mejores inmuebles del país"},
-  {name:"Bolt Paraguay",color:"#34d399",logo:"🚕",tagline:"Tu viaje seguro en Asunción"},
-  {name:"Ferrex",color:"#ff6b00",logo:"🔧",tagline:"Herramientas y construcción"},
+{name:"Ueno Bank",color:"#1a3a5c",logo:"🏦",tagline:"El banco digital del Paraguay"},
+{name:"Tigo Paraguay",color:"#00a6fb",logo:"📱",tagline:"Conectamos a todos los paraguayos"},
+{name:"Tupí Electrodomésticos",color:"#e63946",logo:"🔌",tagline:"Electrodomésticos #1 del Paraguay"},
+{name:"RE/MAX Paraguay",color:"#cc0000",logo:"🏠",tagline:"Los mejores inmuebles del país"},
+{name:"Bolt Paraguay",color:"#34d399",logo:"🚕",tagline:"Tu viaje seguro en Asunción"},
+{name:"Ferrex",color:"#ff6b00",logo:"🔧",tagline:"Herramientas y construcción"},
 ];
-
 // ── SERVICES DATA ─────────────────────────────────────────────────────────────
 const TRANSLATORS=[
-  {id:"t1",name:"María González",langs:["Español","Inglés","Guaraní"],mode:["Online","Presencial"],rate:"150.000 Gs/hr",rating:4.9,reviews:48,avatar:"👩‍💼",specialty:"Negocios e inversiones",available:true},
-  {id:"t2",name:"Carlos Benítez",langs:["Español","Portugués","Inglés"],mode:["Online"],rate:"120.000 Gs/hr",rating:4.8,reviews:31,avatar:"👨‍💼",specialty:"Contratos y legal",available:true},
-  {id:"t3",name:"Ana Flores",langs:["Español","Alemán","Inglés"],mode:["Online","Presencial"],rate:"180.000 Gs/hr",rating:5.0,reviews:22,avatar:"👩‍🎓",specialty:"Trámites migratorios",available:false},
-  {id:"t4",name:"Diego Martínez",langs:["Español","Portugués","Guaraní"],mode:["Presencial"],rate:"100.000 Gs/hr",rating:4.7,reviews:67,avatar:"👨‍🎓",specialty:"Comercio exterior",available:true},
+{id:"t1",name:"María González",langs:["Español","Inglés","Guaraní"],mode:["Online","Presencial"],rate:"150.000 Gs/hr",rating:4.9,reviews:48,avatar:"👩‍💼",specialty:"Negocios e inversiones",available:true},
+{id:"t2",name:"Carlos Benítez",langs:["Español","Portugués","Inglés"],mode:["Online"],rate:"120.000 Gs/hr",rating:4.8,reviews:31,avatar:"👨‍💼",specialty:"Contratos y legal",available:true},
+{id:"t3",name:"Ana Flores",langs:["Español","Alemán","Inglés"],mode:["Online","Presencial"],rate:"180.000 Gs/hr",rating:5.0,reviews:22,avatar:"👩‍🎓",specialty:"Trámites migratorios",available:false},
+{id:"t4",name:"Diego Martínez",langs:["Español","Portugués","Guaraní"],mode:["Presencial"],rate:"100.000 Gs/hr",rating:4.7,reviews:67,avatar:"👨‍🎓",specialty:"Comercio exterior",available:true},
 ];
-
 const SERVICES=[
-  {
-    id:"migracion",icon:"🛂",title:"Trámites Migratorios",color:"#1a3a5c",accent:"#4895ef",bg:"#dbeafe",
-    desc:"Residencia permanente, visa de inversión, naturalización. Acompañamiento completo.",
-    items:["Residencia permanente","Visa de inversión","Reagrupación familiar","Naturalización paraguaya"],
-    price:"Desde 500.000 Gs",providers:12,time:"15-45 días hábiles"
-  },
-  {
-    id:"empresa",icon:"🏢",title:"Apertura de Empresas",color:"#1b4332",accent:"#52b788",bg:"#d8f3dc",
-    desc:"SRL, SA, EAS. Apertura rápida. Paraguay tiene el proceso más ágil de la región.",
-    items:["EAS (desde 1 día)","SRL / SA","Cuenta bancaria empresarial","Número de RUC"],
-    price:"Desde 800.000 Gs",providers:8,time:"1-5 días hábiles"
-  },
-  {
-    id:"impoexpo",icon:"📦",title:"Import / Export",color:"#7c2d12",accent:"#f97316",bg:"#fff7ed",
-    desc:"Asesoramiento en comercio exterior, zonas francas, despacho aduanero y logística.",
-    items:["Zonas francas Ciudad del Este","Despacho aduanero","Logística internacional","Regímenes especiales"],
-    price:"Consulta gratuita",providers:6,time:"Variable según operación"
-  },
-  {
-    id:"inmuebles",icon:"🏠",title:"Inversión Inmobiliaria",color:"#5b21b6",accent:"#8b5cf6",bg:"#ede9fe",
-    desc:"Conectamos con las mejores inmobiliarias de Paraguay para inversores extranjeros.",
-    items:["Compra de propiedades","Alquiler corporativo","Due diligence legal","Financiamiento"],
-    price:"Sin costo inicial",providers:15,time:"Inmediato"
-  },
-  {
-    id:"impuestos",icon:"📊",title:"Asesoría Fiscal",color:"#065f46",accent:"#10b981",bg:"#d1fae5",
-    desc:"Paraguay tiene uno de los sistemas impositivos más bajos del mundo. Te explicamos cómo aprovecharlos.",
-    items:["Impuesto a la renta (10%)","IVA y facturación","Declaraciones anuales","Planificación fiscal"],
-    price:"Desde 300.000 Gs",providers:9,time:"Variable"
-  },
-  {
-    id:"agro",icon:"🌾",title:"Sector Agropecuario",color:"#78350f",accent:"#d97706",bg:"#fef3c7",
-    desc:"Paraguay es potencia agropecuaria mundial. Conectamos inversores con estancias, productores y asesores del campo.",
-    items:["Compra y venta de estancias","Asesoría en producción agrícola","Soja, trigo, maíz, ganadería","Colonias y campos agrícolas","Financiamiento rural"],
-    price:"Consulta gratuita",providers:8,time:"Variable"
-  },
-  {
-    id:"animales",icon:"🐄",title:"Ganadería y Animales",color:"#7c3aed",accent:"#8b5cf6",bg:"#ede9fe",
-    desc:"Paraguay es el 5to exportador mundial de carne. Conectamos con criadores, remates y exportadores.",
-    items:["Ganado vacuno y bovino","Caballos y equinos","Cerdos y aves de corral","Exportación certificada","Sanidad animal y trazabilidad"],
-    price:"Desde 500.000 Gs",providers:6,time:"Variable"
-  },
-  {
-    id:"mercado",icon:"🔍",title:"Estudio de Mercado",color:"#0f172a",accent:"#3b82f6",bg:"#eff6ff",
-    desc:"¿Querés instalar tu empresa en Paraguay? Hacemos un estudio completo antes de que inviertas un solo guaraní.",
-    items:["Análisis de competencia local","Perfil del consumidor paraguayo","Estudio de precios y márgenes","Identificación de proveedores clave","Zonas estratégicas recomendadas"],
-    price:"Desde 1.500.000 Gs",providers:4,time:"7-15 días hábiles"
-  },
-  {
-    id:"crypto",icon:"⚡",title:"Granjas de Bitcoin",color:"#b45309",accent:"#f59e0b",bg:"#fffbeb",
-    desc:"Paraguay tiene la energía más barata de la región. El destino ideal para minar Bitcoin y criptomonedas con máxima rentabilidad.",
-    items:["Asesoría en minería de Bitcoin y Ethereum","Gestión y contratos de energía eléctrica","Proveedores de equipos ASIC y GPU","Marco legal paraguayo para crypto","Conexión con inversores del sector"],
-    price:"Consulta gratuita",providers:5,time:"Variable"
-  },
+{
+id:"migracion",icon:"🛂",title:"Trámites Migratorios",color:"#1a3a5c",accent:"#4895ef",bg:"#dbeafe",
+desc:"Residencia permanente, visa de inversión, naturalización. Acompañamiento completo.",
+items:["Residencia permanente","Visa de inversión","Reagrupación familiar","Naturalización paraguaya"],
+price:"Desde 500.000 Gs",providers:12,time:"15-45 días hábiles"
+},
+{
+id:"empresa",icon:"🏢",title:"Apertura de Empresas",color:"#1b4332",accent:"#52b788",bg:"#d8f3dc",
+desc:"SRL, SA, EAS. Apertura rápida. Paraguay tiene el proceso más ágil de la región.",
+items:["EAS (desde 1 día)","SRL / SA","Cuenta bancaria empresarial","Número de RUC"],
+price:"Desde 800.000 Gs",providers:8,time:"1-5 días hábiles"
+},
+{
+id:"impoexpo",icon:"📦",title:"Import / Export",color:"#7c2d12",accent:"#f97316",bg:"#fff7ed",
+desc:"Asesoramiento en comercio exterior, zonas francas, despacho aduanero y logística.",
+items:["Zonas francas Ciudad del Este","Despacho aduanero","Logística internacional","Regímenes especiales"],
+price:"Consulta gratuita",providers:6,time:"Variable según operación"
+},
+{
+id:"inmuebles",icon:"🏠",title:"Inversión Inmobiliaria",color:"#5b21b6",accent:"#8b5cf6",bg:"#ede9fe",
+desc:"Conectamos con las mejores inmobiliarias de Paraguay para inversores extranjeros.",
+items:["Compra de propiedades","Alquiler corporativo","Due diligence legal","Financiamiento"],
+price:"Sin costo inicial",providers:15,time:"Inmediato"
+},
+{
+id:"impuestos",icon:"📊",title:"Asesoría Fiscal",color:"#065f46",accent:"#10b981",bg:"#d1fae5",
+desc:"Paraguay tiene uno de los sistemas impositivos más bajos del mundo. Te explicamos cómo aprovecharlos.",
+items:["Impuesto a la renta (10%)","IVA y facturación","Declaraciones anuales","Planificación fiscal"],
+price:"Desde 300.000 Gs",providers:9,time:"Variable"
+},
+{
+id:"agro",icon:"🌾",title:"Sector Agropecuario",color:"#78350f",accent:"#d97706",bg:"#fef3c7",
+desc:"Paraguay es potencia agropecuaria mundial. Conectamos inversores con estancias, productores y asesores del campo.",
+items:["Compra y venta de estancias","Asesoría en producción agrícola","Soja, trigo, maíz, ganadería","Colonias y campos agrícolas","Financiamiento rural"],
+price:"Consulta gratuita",providers:8,time:"Variable"
+},
+{
+id:"animales",icon:"🐄",title:"Ganadería y Animales",color:"#7c3aed",accent:"#8b5cf6",bg:"#ede9fe",
+desc:"Paraguay es el 5to exportador mundial de carne. Conectamos con criadores, remates y exportadores.",
+items:["Ganado vacuno y bovino","Caballos y equinos","Cerdos y aves de corral","Exportación certificada","Sanidad animal y trazabilidad"],
+price:"Desde 500.000 Gs",providers:6,time:"Variable"
+},
+{
+id:"mercado",icon:"🔍",title:"Estudio de Mercado",color:"#0f172a",accent:"#3b82f6",bg:"#eff6ff",
+desc:"¿Querés instalar tu empresa en Paraguay? Hacemos un estudio completo antes de que inviertas un solo guaraní.",
+items:["Análisis de competencia local","Perfil del consumidor paraguayo","Estudio de precios y márgenes","Identificación de proveedores clave","Zonas estratégicas recomendadas"],
+price:"Desde 1.500.000 Gs",providers:4,time:"7-15 días hábiles"
+},
+{
+id:"crypto",icon:"⚡",title:"Granjas de Bitcoin",color:"#b45309",accent:"#f59e0b",bg:"#fffbeb",
+desc:"Paraguay tiene la energía más barata de la región. El destino ideal para minar Bitcoin y criptomonedas con máxima rentabilidad.",
+items:["Asesoría en minería de Bitcoin y Ethereum","Gestión y contratos de energía eléctrica","Proveedores de equipos ASIC y GPU","Marco legal paraguayo para crypto","Conexión con inversores del sector"],
+price:"Consulta gratuita",providers:5,time:"Variable"
+},
 ];
-
 // ── LANGS & LESSONS (abbreviated for space — same 40 lessons as before) ───────
 const LANGS={
-  guarani:{id:"guarani",name:"Guaraní",emoji:"🐆",premium:false,tagline:"El alma de Paraguay",color:"#1b4332",accent:"#52b788",bg:"#d8f3dc",
-    units:[
-      {title:"Básico",subtitle:"Primeras palabras",lessons:[
-        mk("g1","Saludos","👋",[v("Mba'éichapa","¿Cómo estás?","Mba'éichapa, amigo!"),v("Iporãite","Estoy bien","Iporãite, ha nde?"),v("Aguyje","Gracias","Aguyje porã!"),v("Rohayhu","Te quiero","Rohayhu, mamá"),v("Jajotopáta","Hasta luego","Jajotopáta!")],[q("¿Cómo se dice '¿Cómo estás?'",["Aguyje","Mba'éichapa","Rohayhu","Iporãite"],1),q("¿Qué significa 'Aguyje'?",["Hasta luego","Te quiero","Gracias","Hola"],2),q("¿Cómo se dice 'Te quiero'?",["Iporãite","Aguyje","Mba'éichapa","Rohayhu"],3)]),
-        mk("g2","Números","🔢",[v("Peteĩ","Uno","Peteĩ mitã"),v("Mokõi","Dos","Mokõi árape"),v("Mbohapy","Tres","Mbohapy"),v("Irundy","Cuatro","Irundy"),v("Po","Cinco","Po = mano")],[q("¿Cuánto es 'Mokõi'?",["1","2","3","4"],1),q("¿Cómo se dice 'Tres'?",["Peteĩ","Irundy","Mbohapy","Po"],2),q("'Po' es:",["4","3","6","5"],3)]),
-        mk("g3","Familia","👨‍👩‍👧",[v("Sy","Mamá","Che sy"),v("Túva","Papá","Nde túva"),v("Mitã'i","Niño","Mitã'i porã"),v("Memby","Hijo/a","Che memby"),v("Ryke'y","Hermano mayor","Che ryke'y")],[q("¿Cómo se dice 'Mamá'?",["Túva","Memby","Sy","Ryke'y"],2),q("'Che memby' es:",["Mi mamá","Mi hermano","Mi hijo/a","Mi papá"],2),q("'Túva' significa:",["Hijo","Papá","Mamá","Hermano"],1)]),
-        mk("g4","Colores","🎨",[v("Pytã","Rojo","Pytã ha sa'yju"),v("Sa'yju","Amarillo","Sa'yju iporã"),v("Hovy","Azul","Hovy ára"),v("Hovy'u","Verde","Ka'aguy hovy'u"),v("Morotĩ","Blanco","Morotĩ iporã")],[q("¿Cómo se dice 'Rojo'?",["Sa'yju","Pytã","Hovy","Morotĩ"],1),q("'Hovy' es:",["Rojo","Amarillo","Azul","Verde"],2),q("'Morotĩ' es:",["Negro","Verde","Azul","Blanco"],3)]),
-      ]},
-      {title:"Intermedio",subtitle:"Vida cotidiana",lessons:[
-        mk("g5","Comida","🍽️",[v("Mandi'o","Mandioca","Mandi'o ro'u"),v("Avatí","Maíz","Avatí vevúi"),v("So'o","Carne","So'o chugui"),v("Ka'ay","Mate","Ka'ay ro'u"),v("Ñana","Fruta","Ñana porã")],[q("¿Cómo se dice 'Carne'?",["Mandi'o","Avatí","So'o","Ka'ay"],2),q("'Mandi'o' es:",["Maíz","Carne","Fruta","Mandioca"],3),q("'Ka'ay' es:",["Carne","Mate","Fruta","Maíz"],1)]),
-        mk("g6","Mercado","🛒",[v("Mba'e reñói?","¿Cuánto vale?","Mba'e reñói ko?"),v("Hy'a","Caro","Hy'a hete"),v("Mbarete","Barato","Mbarete ha porã"),v("Roipota","Queremos","Roipota peteĩ"),v("Ndaipóri","No hay","Ndaipóri")],[q("¿Cómo se pregunta el precio?",["Roipota","Hy'a","Mba'e reñói?","Ndaipóri"],2),q("'Hy'a' es:",["Barato","Caro","No hay","Queremos"],1),q("'Ndaipóri' es:",["Caro","No hay","Queremos","¿Cuánto?"],1)]),
-        mk("g7","Frases","💬",[v("Che réra...","Mi nombre es...","Che réra Richard"),v("Aipota","Quiero","Aipota oĩ"),v("Ndaipotái","No quiero","Ndaipotái"),v("Upéi","Después","Upéi rojaho"),v("Añete","De verdad","Añete piko?")],[q("'Che réra' es:",["Quiero","Mi nombre es","No quiero","Después"],1),q("¿Cómo se dice 'Quiero'?",["Ndaipotái","Upéi","Aipota","Añete"],2),q("'Añete' es:",["Después","De verdad","No quiero","Mi nombre"],1)]),
-      ]},
-      {title:"Avanzado",subtitle:"Cultura y éxito",lessons:[
-        mk("g8","Cultura","🇵🇾",[v("Ñande Reko","Nuestra forma de ser","Ñande Reko"),v("Tekove","Vida","Tekove porã"),v("Mburuvicha","Jefe","Che mburuvicha"),v("Ñandejára","Nuestro Señor","Ñandejára pytyvõ"),v("Yvypóra","Persona","Yvypóra porã")],[q("'Tekove' es:",["Jefe","Vida","Dios","Persona"],1),q("'Mburuvicha' es:",["Vida","Persona","Jefe","Dios"],2),q("'Yvypóra porã' es:",["Buena vida","Mi jefe","Buena persona","Señor"],2)]),
-        mk("g9","Trabajo","💼",[v("Rembiapo","Tu trabajo","Nde rembiapo"),v("Pysyrõ","Ayudar","Repysyrõ chéve"),v("Joaju","Reunión","Oĩ joaju"),v("Mba'e rejapo?","¿Qué hacés?","Mba'e rejapo?"),v("Mbareté","Fuerza","Mbareté nde")],[q("'Joaju' es:",["Trabajar","Ayudar","Reunión","¿Qué hacés?"],2),q("'Mba'e rejapo?' es:",["¿Reunión?","¿Cuánto?","¿Qué hacés?","¿Cómo estás?"],2),q("'Mbareté' es:",["Reunión","Fuerza","Trabajo","Ayudar"],1)]),
-        mk("g10","Éxito","🏆",[v("Mba'e porã","Algo bueno","Ko mba'e porã"),v("Ojeporu porã","Funciona bien","Ojeporu porã"),v("Rojave yvate","¡Llegamos alto!","Rojave yvate!"),v("Porãve","Mejor","Porãve ko"),v("Añeterei","¡De verdad!","Añeterei iporã!")],[q("'Ojeporu porã' es:",["Algo bueno","Funciona bien","Llegamos alto","Mejor"],1),q("'Rojave yvate' expresa:",["Algo bueno","Funciona","Éxito","Mejor"],2),q("'Añeterei' expresa:",["Duda","Negación","Entusiasmo","Tristeza"],2)]),
-      ]},
-      {title:"Nivel Experto",subtitle:"Guaraní avanzado",lessons:[
-        mk("g11","Naturaleza","🌿",[v("Ka'aguy","Selva / Bosque","Ka'aguy hovy'u = bosque verde"),v("Ysyry","Río","Ysyry porã = río bonito"),v("Yvytu","Viento","Yvytu mombyry = viento lejano"),v("Ára","Cielo / Día","Ko ára iporã = hoy es lindo"),v("Ybytu","Aire fresco","Ybytu porã = aire puro")],[q("'Ka'aguy' es:",["Río","Viento","Selva/Bosque","Cielo"],2),q("'Ysyry' es:",["Selva","Río","Viento","Aire"],1),q("'Ára' significa:",["Bosque","Río","Cielo/Día","Viento"],2)]),
-        mk("g12","Emociones","❤️",[v("Che py'a hory","Estoy feliz","Che py'a hory hete!"),v("Che reikuaarã","Te extraño","Che reikuaarã porã"),v("Mba'e porã!","¡Qué bueno!","Mba'e porã ko ara!"),v("Che rasy","Me duele / Estoy triste","Che rasy py'a = triste"),v("Aguyjevéta","Muchas gracias","Aguyjevéta nde rendapy")],[q("'Che py'a hory' es:",["Estoy triste","Te extraño","Estoy feliz","Me duele"],2),q("'Aguyjevéta' es:",["Te quiero","Hasta luego","Muchas gracias","¡Qué bueno!"],2),q("'Che rasy' significa:",["Feliz","Extraño","Gracias","Me duele/Triste"],3)]),
-        mk("g13","Mercado 4","🛍️",[v("Mba'e reñói?","¿Cuánto vale?","Mba'e reñói ko?"),v("Oñepyrũ","Empieza / Comienza","Oñepyrũ la venta"),v("Tembi'u","Comida / Alimento","Tembi'u iporã"),v("Mba'erépa?","¿Por qué?","Mba'erépa hy'a?"),v("Upéicha","Así es / Así","Upéicha ko = así es")],[q("'Mba'erépa' es:",["¿Cuánto?","¿Dónde?","¿Por qué?","¿Cuándo?"],2),q("'Tembi'u' es:",["Ropa","Comida","Agua","Dinero"],1),q("'Upéicha' significa:",["¿Por qué?","Empieza","Así es","Comida"],2)]),
-        mk("g14","Guaraní Moderno","📱",[v("Internetpe","En internet","Ha'e guaranípe ojogua internetpe"),v("Mba'éicha ojapo?","¿Cómo funciona?","Mba'éicha ojapo ko?"),v("Oñemoherakuã","Se registra","Oñemoherakuã Mbo'eharápe"),v("Ñe'ẽ pyahu","Palabra nueva","Ñe'ẽ pyahu roikuaa"),v("Ñamoî","Lo ponemos / Instalamos","Ñamoî la aplicación")],[q("'Ñe'ẽ pyahu' es:",["Internet","Funciona","Palabra nueva","Instalamos"],2),q("'Ñamoî' es:",["Registrar","Lo ponemos/Instalamos","Internet","¿Cómo?"],1),q("'Mba'éicha ojapo?' es:",["¿Cuánto vale?","¿Por qué?","¿Cómo funciona?","¿Dónde?"],2)]),
-        mk("g15","Orgullo Guaraní","🏆",[v("Ñande ñe'ẽ","Nuestro idioma","Ñande ñe'ẽ iporã hete"),v("Mbo'ehára","Enseñar / Plataforma","Mbo'ehára ñandéve"),v("Ñamoporãve","Lo mejoramos","Ñamoporãve ko app"),v("Paraguái","Paraguay","Paraguáipe oiko ñande"),v("Ñande mba'e","Nuestras cosas","Ñande mba'e iporã")],[q("'Ñande ñe'ẽ' es:",["Nuestro país","Nuestro idioma","Nuestros amigos","Nuestra comida"],1),q("'Mbo'ehára' significa:",["Aprender","Enseñar/Plataforma","Mejorar","País"],1),q("'Ñamoporãve' es:",["Lo empeoramos","Lo enseñamos","Lo mejoramos","Lo vendemos"],2)]),
-      ]},
-    ]},
-  ingles:{id:"ingles",name:"Inglés",emoji:"🌎",premium:false,tagline:"
+guarani:{id:"guarani",name:"Guaraní",emoji:"🐆",premium:false,tagline:"El alma de Paraguay",color:"#1b4332",accent:"#52b788",bg:"#d8f3dc",
+units:[
+{title:"Básico",subtitle:"Primeras palabras",lessons:[
+mk("g1","Saludos","👋",[v("Mba'éichapa","¿Cómo estás?","Mba'éichapa, amigo!"),v("Iporãite","Estoy bien","Iporãite, ha nde?"),v("Aguyje","Gracias","Aguyje porã!"),v("Rohayhu","Te quiero","Rohayhu, mamá"),v("Jajotopáta","Hasta luego","Jajotopáta!")],[q("¿Cómo se dice '¿Cómo estás?'",["Aguyje","Mba'éichapa","Rohayhu","Iporãite"],1),q("¿Qué significa 'Aguyje'?",["Hasta luego","Te quiero","Gracias","Hola"],2),q("¿Cómo se dice 'Te quiero'?",["Iporãite","Aguyje","Mba'éichapa","Rohayhu"],3)]),
+mk("g2","Números","🔢",[v("Peteĩ","Uno","Peteĩ mitã"),v("Mokõi","Dos","Mokõi árape"),v("Mbohapy","Tres","Mbohapy"),v("Irundy","Cuatro","Irundy"),v("Po","Cinco","Po = mano")],[q("¿Cuánto es 'Mokõi'?",["1","2","3","4"],1),q("¿Cómo se dice 'Tres'?",["Peteĩ","Irundy","Mbohapy","Po"],2),q("'Po' es:",["4","3","6","5"],3)]),
+mk("g3","Familia","👨‍👩‍👧",[v("Sy","Mamá","Che sy"),v("Túva","Papá","Nde túva"),v("Mitã'i","Niño","Mitã'i porã"),v("Memby","Hijo/a","Che memby"),v("Ryke'y","Hermano mayor","Che ryke'y")],[q("¿Cómo se dice 'Mamá'?",["Túva","Memby","Sy","Ryke'y"],2),q("'Che memby' es:",["Mi mamá","Mi hermano","Mi hijo/a","Mi papá"],2),q("'Túva' significa:",["Hijo","Papá","Mamá","Hermano"],1)]),
+mk("g4","Colores","🎨",[v("Pytã","Rojo","Pytã ha sa'yju"),v("Sa'yju","Amarillo","Sa'yju iporã"),v("Hovy","Azul","Hovy ára"),v("Hovy'u","Verde","Ka'aguy hovy'u"),v("Morotĩ","Blanco","Morotĩ iporã")],[q("¿Cómo se dice 'Rojo'?",["Sa'yju","Pytã","Hovy","Morotĩ"],1),q("'Hovy' es:",["Rojo","Amarillo","Azul","Verde"],2),q("'Morotĩ' es:",["Negro","Verde","Azul","Blanco"],3)]),
+]},
+{title:"Intermedio",subtitle:"Vida cotidiana",lessons:[
+mk("g5","Comida","🍽️",[v("Mandi'o","Mandioca","Mandi'o ro'u"),v("Avatí","Maíz","Avatí vevúi"),v("So'o","Carne","So'o chugui"),v("Ka'ay","Mate","Ka'ay ro'u"),v("Ñana","Fruta","Ñana porã")],[q("¿Cómo se dice 'Carne'?",["Mandi'o","Avatí","So'o","Ka'ay"],2),q("'Mandi'o' es:",["Maíz","Carne","Fruta","Mandioca"],3),q("'Ka'ay' es:",["Carne","Mate","Fruta","Maíz"],1)]),
+mk("g6","Mercado","🛒",[v("Mba'e reñói?","¿Cuánto vale?","Mba'e reñói ko?"),v("Hy'a","Caro","Hy'a hete"),v("Mbarete","Barato","Mbarete ha porã"),v("Roipota","Queremos","Roipota peteĩ"),v("Ndaipóri","No hay","Ndaipóri")],[q("¿Cómo se pregunta el precio?",["Roipota","Hy'a","Mba'e reñói?","Ndaipóri"],2),q("'Hy'a' es:",["Barato","Caro","No hay","Queremos"],1),q("'Ndaipóri' es:",["Caro","No hay","Queremos","¿Cuánto?"],1)]),
+mk("g7","Frases","💬",[v("Che réra...","Mi nombre es...","Che réra Richard"),v("Aipota","Quiero","Aipota oĩ"),v("Ndaipotái","No quiero","Ndaipotái"),v("Upéi","Después","Upéi rojaho"),v("Añete","De verdad","Añete piko?")],[q("'Che réra' es:",["Quiero","Mi nombre es","No quiero","Después"],1),q("¿Cómo se dice 'Quiero'?",["Ndaipotái","Upéi","Aipota","Añete"],2),q("'Añete' es:",["Después","De verdad","No quiero","Mi nombre"],1)]),
+]},
+{title:"Avanzado",subtitle:"Cultura y éxito",lessons:[
+mk("g8","Cultura","🇵🇾",[v("Ñande Reko","Nuestra forma de ser","Ñande Reko"),v("Tekove","Vida","Tekove porã"),v("Mburuvicha","Jefe","Che mburuvicha"),v("Ñandejára","Nuestro Señor","Ñandejára pytyvõ"),v("Yvypóra","Persona","Yvypóra porã")],[q("'Tekove' es:",["Jefe","Vida","Dios","Persona"],1),q("'Mburuvicha' es:",["Vida","Persona","Jefe","Dios"],2),q("'Yvypóra porã' es:",["Buena vida","Mi jefe","Buena persona","Señor"],2)]),
+mk("g9","Trabajo","💼",[v("Rembiapo","Tu trabajo","Nde rembiapo"),v("Pysyrõ","Ayudar","Repysyrõ chéve"),v("Joaju","Reunión","Oĩ joaju"),v("Mba'e rejapo?","¿Qué hacés?","Mba'e rejapo?"),v("Mbareté","Fuerza","Mbareté nde")],[q("'Joaju' es:",["Trabajar","Ayudar","Reunión","¿Qué hacés?"],2),q("'Mba'e rejapo?' es:",["¿Reunión?","¿Cuánto?","¿Qué hacés?","¿Cómo estás?"],2),q("'Mbareté' es:",["Reunión","Fuerza","Trabajo","Ayudar"],1)]),
+mk("g10","Éxito","🏆",[v("Mba'e porã","Algo bueno","Ko mba'e porã"),v("Ojeporu porã","Funciona bien","Ojeporu porã"),v("Rojave yvate","¡Llegamos alto!","Rojave yvate!"),v("Porãve","Mejor","Porãve ko"),v("Añeterei","¡De verdad!","Añeterei iporã!")],[q("'Ojeporu porã' es:",["Algo bueno","Funciona bien","Llegamos alto","Mejor"],1),q("'Rojave yvate' expresa:",["Algo bueno","Funciona","Éxito","Mejor"],2),q("'Añeterei' expresa:",["Duda","Negación","Entusiasmo","Tristeza"],2)]),
+]},
+{title:"Nivel Experto",subtitle:"Guaraní avanzado",lessons:[
+mk("g11","Naturaleza","🌿",[v("Ka'aguy","Selva / Bosque","Ka'aguy hovy'u = bosque verde"),v("Ysyry","Río","Ysyry porã = río bonito"),v("Yvytu","Viento","Yvytu mombyry = viento lejano"),v("Ára","Cielo / Día","Ko ára iporã = hoy es lindo"),v("Ybytu","Aire fresco","Ybytu porã = aire puro")],[q("'Ka'aguy' es:",["Río","Viento","Selva/Bosque","Cielo"],2),q("'Ysyry' es:",["Selva","Río","Viento","Aire"],1),q("'Ára' significa:",["Bosque","Río","Cielo/Día","Viento"],2)]),
+mk("g12","Emociones","❤️",[v("Che py'a hory","Estoy feliz","Che py'a hory hete!"),v("Che reikuaarã","Te extraño","Che reikuaarã porã"),v("Mba'e porã!","¡Qué bueno!","Mba'e porã ko ara!"),v("Che rasy","Me duele / Estoy triste","Che rasy py'a = triste"),v("Aguyjevéta","Muchas gracias","Aguyjevéta nde rendapy")],[q("'Che py'a hory' es:",["Estoy triste","Te extraño","Estoy feliz","Me duele"],2),q("'Aguyjevéta' es:",["Te quiero","Hasta luego","Muchas gracias","¡Qué bueno!"],2),q("'Che rasy' significa:",["Feliz","Extraño","Gracias","Me duele/Triste"],3)]),
+mk("g13","Mercado 4","🛍️",[v("Mba'e reñói?","¿Cuánto vale?","Mba'e reñói ko?"),v("Oñepyrũ","Empieza / Comienza","Oñepyrũ la venta"),v("Tembi'u","Comida / Alimento","Tembi'u iporã"),v("Mba'erépa?","¿Por qué?","Mba'erépa hy'a?"),v("Upéicha","Así es / Así","Upéicha ko = así es")],[q("'Mba'erépa' es:",["¿Cuánto?","¿Dónde?","¿Por qué?","¿Cuándo?"],2),q("'Tembi'u' es:",["Ropa","Comida","Agua","Dinero"],1),q("'Upéicha' significa:",["¿Por qué?","Empieza","Así es","Comida"],2)]),
+mk("g14","Guaraní Moderno","📱",[v("Internetpe","En internet","Ha'e guaranípe ojogua internetpe"),v("Mba'éicha ojapo?","¿Cómo funciona?","Mba'éicha ojapo ko?"),v("Oñemoherakuã","Se registra","Oñemoherakuã Mbo'eharápe"),v("Ñe'ẽ pyahu","Palabra nueva","Ñe'ẽ pyahu roikuaa"),v("Ñamoî","Lo ponemos / Instalamos","Ñamoî la aplicación")],[q("'Ñe'ẽ pyahu' es:",["Internet","Funciona","Palabra nueva","Instalamos"],2),q("'Ñamoî' es:",["Registrar","Lo ponemos/Instalamos","Internet","¿Cómo?"],1),q("'Mba'éicha ojapo?' es:",["¿Cuánto vale?","¿Por qué?","¿Cómo funciona?","¿Dónde?"],2)]),
+mk("g15","Orgullo Guaraní","🏆",[v("Ñande ñe'ẽ","Nuestro idioma","Ñande ñe'ẽ iporã hete"),v("Mbo'ehára","Enseñar / Plataforma","Mbo'ehára ñandéve"),v("Ñamoporãve","Lo mejoramos","Ñamoporãve ko app"),v("Paraguái","Paraguay","Paraguáipe oiko ñande"),v("Ñande mba'e","Nuestras cosas","Ñande mba'e iporã")],[q("'Ñande ñe'ẽ' es:",["Nuestro país","Nuestro idioma","Nuestros amigos","Nuestra comida"],1),q("'Mbo'ehára' significa:",["Aprender","Enseñar/Plataforma","Mejorar","País"],1),q("'Ñamoporãve' es:",["Lo empeoramos","Lo enseñamos","Lo mejoramos","Lo vendemos"],2)]),
+]},
+]},
+ingles:{id:"ingles",name:"Inglés",emoji:"🌎",premium:false,tagline:"Abre el mundo desde Paraguay",color:"#1a3a5c",accent:"#4895ef",bg:"#dbeafe",
+units:[
+{title:"Básico",subtitle:"English para el día a día",lessons:[
+mk("i1","Saludos","🤝",[v("Good morning!","¡Buenos días!","Good morning, sir!"),v("Nice to meet you","Mucho gusto","Nice to meet you!"),v("How are you?","¿Cómo estás?","How are you today?"),v("I'm fine, thanks","Estoy bien","I'm fine, thanks!"),v("See you later","Hasta luego","See you later!")],[q("¿Cómo se dice 'Buenos días'?",["Good night","Good morning","Good evening","Hello"],1),q("'Nice to meet you' es:",["Hasta luego","¿Cómo estás?","Mucho gusto","Gracias"],2),q("¿Cómo respondés 'How are you?'",["See you later","Good morning","I'm fine, thanks","Nice to meet you"],2)]),
+mk("i2","Negocios","💼",[v("How much?","¿Cuánto cuesta?","How much does it cost?"),v("Do you accept cards?","¿Acepta tarjetas?","Do you accept cards?"),v("I'd like to invest","Quiero invertir","I'd like to invest here."),v("What's the price?","¿Cuál es el precio?","What's the price?"),v("Let's make a deal","Hagamos un trato","Let's make a deal!")],[q("¿Cómo preguntás el precio?",["Do you accept cards?","How much?","Let's make a deal","See you later"],1),q("'Let's make a deal' es:",["¿Cuánto?","Hasta luego","Hagamos un trato","¿Acepta tarjetas?"],2),q("'I'd like to invest' es:",["Quiero comprar","Quiero invertir","Quiero vender","Quiero preguntar"],1)]),
+mk("i3","Ciudad","🏙️",[v("Where is...?","¿Dónde está...?","Where is the bank?"),v("Turn left","Dobla izquierda","Turn left here."),v("Turn right","Dobla derecha","Turn right there."),v("Straight ahead","Todo recto","Go straight ahead."),v("How far?","¿Qué tan lejos?","How far is it?")],[q("'Where is...?' es:",["How far?","Turn right","Where is...?","Straight ahead"],2),q("'Turn left' es:",["Derecha","Recto","Izquierda","¿Lejos?"],2),q("'Straight ahead' es:",["Turn left","Straight ahead","Turn right","How far"],1)]),
+mk("i4","Restaurante","🍽️",[v("I'd like to order","Quisiera pedir","I'd like to order."),v("What do you recommend?","¿Qué recomienda?","What do you recommend?"),v("The bill, please","La cuenta","The bill please!"),v("It's delicious","Está delicioso","This is delicious!"),v("I'm allergic to...","Soy alérgico a...","I'm allergic to gluten.")],[q("¿Cómo pedís algo?",["The bill","What do you recommend?","I'd like to order","It's delicious"],2),q("'The bill, please' es:",["Está delicioso","¿Qué recomienda?","La cuenta","Quisiera pedir"],2),q("'It's delicious' es:",["Soy alérgico","La cuenta","Está delicioso","Quisiera pedir"],2)]),
+]},
+{title:"Intermedio",subtitle:"English para moverte",lessons:[
+mk("i5","Transporte","🚕",[v("I need a taxi","Necesito un taxi","I need a taxi."),v("How long?","¿Cuánto tarda?","How long does it take?"),v("Bus stop","Parada","Where is the bus stop?"),v("Round trip","Ida y vuelta","Round trip, please."),v("Is it far?","¿Está lejos?","Is it far?")],[q("'I need a taxi' es:",["Is it far?","Bus stop","I need a taxi","Round trip"],2),q("'How long?' es:",["¿Está lejos?","¿Cuánto tarda?","Ida y vuelta","Parada"],1),q("'Round trip' es:",["Solo ida","Parada","¿Está lejos?","Ida y vuelta"],3)]),
+mk("i6","Hotel","🏨",[v("I have a reservation","Tengo reserva","I have a reservation."),v("Double room","Hab. doble","Double room please."),v("WiFi password","Clave WiFi","WiFi password?"),v("Late checkout","Salida tardía","Late checkout?"),v("Room service","Servicio cuarto","Room service please.")],[q("'I have a reservation' es:",["Hab. doble","Tengo reserva","WiFi","Room service"],1),q("'Room service' es:",["Salida tardía","WiFi","Hab. doble","Servicio cuarto"],3),q("'Late checkout' es:",["Reserva tardía","Hab. doble","Salida tardía","WiFi"],2)]),
+mk("i7","Reuniones","📋",[v("Let me introduce myself","Permítame presentarme","Let me introduce myself."),v("As I mentioned","Como mencioné","As I mentioned..."),v("Moving forward","De ahora en adelante","Moving forward..."),v("Action items","Puntos de acción","Action items:"),v("Follow up","Dar seguimiento","I'll follow up.")],[q("'Follow up' es:",["Presentarme","Como mencioné","Dar seguimiento","Puntos de acción"],2),q("'Action items' es:",["Avanzando","Puntos de acción","Seguimiento","Como mencioné"],1),q("'Moving forward' es:",["Me presento","Como mencioné","Seguimiento","De ahora en adelante"],3)]),
+]},
+{title:"Avanzado",subtitle:"English profesional",lessons:[
+mk("i8","Presentaciones","📊",[v("I represent","Represento a","I represent Mbo'ehàra."),v("Market opportunity","Oportunidad de mercado","Huge market opportunity."),v("Return on investment","Retorno de inversión","ROI over 40%."),v("Target audience","Público objetivo","Our target audience."),v("Revenue model","Modelo de ingresos","Our revenue model.")],[q("'Return on investment' es:",["Oportunidad","Retorno de inversión","Modelo","Público"],1),q("'Target audience' es:",["Represento","Retorno","Público objetivo","Oportunidad"],2),q("'Revenue model' es:",["Modelo de ingresos","Retorno","Público","Oportunidad"],0)]),
+mk("i9","Negociación","🤝",[v("I'd like to propose","Me gustaría proponer","I'd like to propose..."),v("What are your terms?","¿Cuáles son las condiciones?","What are your terms?"),v("We can offer","Podemos ofrecer","We can offer 20% off."),v("It's a deal!","¡Trato hecho!","It's a deal!"),v("Sign the contract","Firmar el contrato","Ready to sign.")],[q("'It's a deal!' es:",["Ofrecer","Proponer","¡Trato hecho!","Contrato"],2),q("'I'd like to propose' es:",["¿Condiciones?","Podemos ofrecer","Me gustaría proponer","Firmar"],2),q("'Sign the contract' es:",["Firmar el contrato","¿Condiciones?","Podemos ofrecer","Trato"],0)]),
+mk("i10","Email","💻",[v("Please find attached","Adjunto encontrará","Please find attached..."),v("As per our call","Según nuestra llamada","As per our call..."),v("Looking forward to","Espero con ansias","Looking forward to..."),v("Best regards","Saludos cordiales","Best regards."),v("FYI","Para tu info","FYI...")],[q("'Best regards' se usa para:",["Empezar","Adjuntar","Despedirse","Preguntar"],2),q("'Please find attached' es:",["Saludos","Adjunto encontrará","Según llamada","Para tu info"],1),q("'Looking forward to' expresa:",["Despedida","Anticipación","Disculpa","Adjunto"],1)]),
+]},
+{title:"Nivel Experto",subtitle:"English for Paraguay investors",lessons:[
+mk("i11","Banking & Finance","🏦",[v("Open a bank account","Abrir una cuenta bancaria","I need to open a bank account."),v("Exchange rate","Tipo de cambio","What's the exchange rate today?"),v("Wire transfer","Transferencia bancaria","I'd like to make a wire transfer."),v("Tax-free","Libre de impuestos","Paraguay is nearly tax-free."),v("Offshore company","Empresa offshore","Many open an offshore company here.")],[q("'Wire transfer' es:",["Cuenta bancaria","Tipo de cambio","Transferencia bancaria","Libre de impuestos"],2),q("'Tax-free' significa:",["Con impuestos","Libre de impuestos","Tipo de cambio","Offshore"],1),q("'Exchange rate' es:",["Transferencia","Tipo de cambio","Cuenta bancaria","Empresa"],1)]),
+mk("i12","Real Estate","🏠",[v("Property deed","Escritura de propiedad","I need the property deed."),v("Square meters","Metros cuadrados","How many square meters?"),v("Down payment","Pago inicial / Seña","What's the down payment?"),v("Mortgage","Hipoteca","Is there a mortgage available?"),v("Freehold","Plena propiedad","This is freehold property.")],[q("'Property deed' es:",["Hipoteca","Escritura","Metros cuadrados","Pago inicial"],1),q("'Down payment' es:",["Hipoteca","Plena propiedad","Escritura","Pago inicial/Seña"],3),q("'Freehold' significa:",["Hipotecado","Con deuda","Plena propiedad","Alquilado"],2)]),
+mk("i13","Agriculture","🌾",[v("Ranch","Estancia","I want to buy a ranch."),v("Hectares","Hectáreas","How many hectares does it have?"),v("Soybean","Soja","Paraguay exports a lot of soybean."),v("Cattle","Ganado","We have 500 head of cattle."),v("Harvest","Cosecha","The harvest is in March.")],[q("'Hectares' es:",["Ganado","Cosecha","Estancia","Hectáreas"],3),q("'Cattle' es:",["Soja","Ganado","Cosecha","Estancia"],1),q("'Harvest' es:",["Estancia","Hectáreas","Ganado","Cosecha"],3)]),
+mk("i14","Crypto & Energy","⚡",[v("Bitcoin mining","Minería de Bitcoin","Bitcoin mining is profitable here."),v("Electricity cost","Costo de energía","The electricity cost is very low."),v("Mining rig","Equipo de minería","I need to set up a mining rig."),v("Hash rate","Tasa de hash","What's your hash rate?"),v("ROI","Retorno de inversión","The ROI is excellent in Paraguay.")],[q("'Mining rig' es:",["Bitcoin","Energía","Equipo de minería","Hash rate"],2),q("'Electricity cost' es:",["Costo de energía","Bitcoin","Hash rate","ROI"],0),q("'Hash rate' es:",["Costo de energía","Retorno","Tasa de hash","Equipo"],2)]),
+mk("i15","Living in Paraguay","🇵🇾",[v("Permanent residency","Residencia permanente","How do I get permanent residency?"),v("Cost of living","Costo de vida","The cost of living is very low."),v("Safe country","País seguro","Paraguay is a safe country."),v("Friendly people","Gente amigable","The people are very friendly."),v("Future potential","Potencial futuro","Enormous future potential.")],[q("'Permanent residency' es:",["Costo de vida","País seguro","Residencia permanente","Gente amigable"],2),q("'Cost of living' es:",["Residencia","País seguro","Potencial","Costo de vida"],3),q("'Safe country' significa:",["Gente amigable","País seguro","Costo de vida","Residencia"],1)]),
+]},
+]},
+portugues:{id:"portugues",name:"Português",emoji:"🌿",premium:false,tagline:"Tu vecino de negocios",color:"#2d4a00",accent:"#70c84b",bg:"#dcfce7",
+units:[
+{title:"Básico",subtitle:"Primeiras palavras",lessons:[
+mk("p1","Cumprimentos","😊",[v("Bom dia!","¡Buenos días!","Bom dia!"),v("Tudo bem?","¿Todo bien?","Tudo bem?"),v("Muito prazer","Mucho gusto","Muito prazer!"),v("Obrigado","Gracias","Obrigado!"),v("Até logo","Hasta luego","Até logo!")],[q("¿Cómo se dice 'Buenos días'?",["Boa noite","Bom dia","Boa tarde","Olá"],1),q("'Tudo bem?' es:",["Hasta luego","Mucho gusto","¿Todo bien?","Gracias"],2),q("'Obrigado' es:",["Por favor","De nada","Gracias","Buenos días"],2)]),
+mk("p2","Comércio","💰",[v("Quanto custa?","¿Cuánto cuesta?","Quanto custa?"),v("Aceita cartão?","¿Acepta tarjeta?","Aceita cartão?"),v("Tem desconto?","¿Tiene descuento?","Tem desconto?"),v("Quero comprar","Quiero comprar","Quero comprar."),v("Podemos negociar","Podemos negociar","Podemos negociar!")],[q("¿Cómo preguntás el precio?",["Tem desconto?","Aceita cartão?","Quanto custa?","Quero comprar"],2),q("'Podemos negociar' es:",["¿Cuánto?","Podemos negociar","Descuento","Tarjeta"],1),q("'Tem desconto?' es:",["Aceita cartão?","Quero comprar","Quanto custa?","Tem desconto?"],3)]),
+mk("p3","Cidade","🗺️",[v("Onde fica?","¿Dónde queda?","Onde fica o banco?"),v("À direita","A la derecha","À direita."),v("À esquerda","A la izquierda","À esquerda."),v("Bem pertinho","Muy cerquita","É bem pertinho!"),v("Me ajuda?","¿Me ayudás?","Me ajuda?")],[q("'Onde fica?' es:",["Me ajuda?","Onde fica?","À direita","Pertinho"],1),q("'À esquerda' es:",["Derecha","Cerca","Recto","Izquierda"],3),q("¿Cómo pedís ayuda?",["Onde fica?","À direita","Me ajuda?","Pertinho"],2)]),
+mk("p4","Restaurante","🍽️",[v("Quero pedir","Quiero pedir","Quero pedir."),v("O que recomenda?","¿Qué recomienda?","O que recomenda?"),v("A conta","La cuenta","A conta, por favor!"),v("Está delicioso","Está delicioso","Está delicioso!"),v("Tem vegetariano?","¿Tiene vegetariano?","Tem opção vegetariana?")],[q("¿Cómo pedís la cuenta?",["Quero pedir","O que recomenda?","A conta","Está delicioso"],2),q("'Está delicioso' es:",["La cuenta","Está delicioso","Quiero pedir","¿Qué recomienda?"],1),q("¿Cómo preguntás por vegetariano?",["A conta","Está delicioso","Quero pedir","Tem vegetariano?"],3)]),
+]},
+{title:"Intermedio",subtitle:"Para moverte",lessons:[
+mk("p5","Transporte","🚕",[v("Preciso de táxi","Necesito taxi","Preciso de táxi."),v("Quanto tempo?","¿Cuánto tarda?","Quanto tempo leva?"),v("Ponto de ônibus","Parada","Ponto de ônibus?"),v("Passagem","Pasaje","Uma passagem."),v("Está longe?","¿Está lejos?","Está longe?")],[q("'Preciso de táxi' es:",["¿Cuánto?","Necesito taxi","Parada","Pasaje"],1),q("'Passagem' es:",["Taxi","Parada","Pasaje","Lejos"],2),q("¿Cómo preguntás si está lejos?",["Ponto","Passagem","Quanto tempo?","Está longe?"],3)]),
+mk("p6","Hotel","🏨",[v("Tenho uma reserva","Tengo reserva","Tenho uma reserva."),v("Quarto duplo","Hab. doble","Quarto duplo."),v("Café da manhã?","¿Desayuno incluido?","Café da manhã incluso?"),v("Senha do WiFi?","¿Clave WiFi?","Qual é a senha?"),v("Check-out","Check-out","Vou fazer check-out.")],[q("'Tenho uma reserva' es:",["Hab. doble","Desayuno","Tengo reserva","Check-out"],2),q("'Café da manhã incluso' es:",["WiFi","Desayuno incluido","Check-out","Hab. doble"],1),q("¿Cómo pedís la clave WiFi?",["Reserva","Senha do WiFi?","Quarto duplo","Café da manhã"],1)]),
+mk("p7","Reuniões","📋",[v("Vou me apresentar","Me voy a presentar","Vou me apresentar."),v("Conforme mencionei","Como mencioné","Conforme mencionei..."),v("Nossa empresa","Nuestra empresa","Nossa empresa..."),v("Vou enviar por email","Enviaré por email","Vou enviar."),v("Próximos passos","Próximos pasos","Próximos passos?")],[q("'Próximos passos' es:",["Me presento","Próximos pasos","Nuestra empresa","Como mencioné"],1),q("'Vou me apresentar' es:",["Enviaré","Como mencioné","Me voy a presentar","Próximos pasos"],2),q("'Nossa empresa' es:",["Enviaré","Próximos pasos","Como mencioné","Nuestra empresa"],3)]),
+]},
+{title:"Avanzado",subtitle:"Português de negocios",lessons:[
+mk("p8","Investimento","📈",[v("Oportunidade","Oportunidad de mercado","Grande oportunidade."),v("Retorno","Retorno de inversión","Retorno de 30%."),v("Parceria","Sociedad","Quero propor parceria."),v("Mercado crescente","Mercado en crecimiento","Paraguai cresce."),v("Capital estrangeiro","Capital extranjero","Capital estrangeiro.")],[q("'Parceria' es:",["Oportunidad","Retorno","Sociedad","Capital"],2),q("'Mercado crescente' es:",["Capital","Retorno","Parceria","Mercado en crecimiento"],3),q("'Capital estrangeiro' es:",["Parceria","Retorno","Oportunidade","Capital extranjero"],3)]),
+mk("p9","Negociação","🤝",[v("Gostaria de propor","Me gustaría proponer","Gostaria de propor..."),v("Quais são os termos?","¿Cuáles son los términos?","Quais os termos?"),v("Podemos oferecer","Podemos ofrecer","Podemos oferecer..."),v("Fechado!","¡Cerrado!","Está fechado!"),v("Assinar o contrato","Firmar el contrato","Vamos assinar?")],[q("'Fechado!' es:",["¿Términos?","Me gustaría proponer","¡Cerrado!","Podemos ofrecer"],2),q("'Gostaria de propor' es:",["Firmar","Me gustaría proponer","¿Términos?","Podemos ofrecer"],1),q("'Assinar o contrato' es:",["¿Términos?","¡Cerrado!","Podemos ofrecer","Firmar el contrato"],3)]),
+mk("p10","Digital","💻",[v("Segue em anexo","Adjunto encontrará","Segue em anexo..."),v("Conforme nossa conversa","Según nuestra conversación","Conforme conversamos..."),v("Aguardo seu retorno","Quedo a la espera","Aguardo retorno."),v("Atenciosamente","Atentamente","Atenciosamente."),v("Para sua informação","Para su información","Para sua informação...")],[q("'Atenciosamente' se usa para:",["Empezar","Despedirse","Adjuntar","Preguntar"],1),q("'Segue em anexo' es:",["Atentamente","Adjunto encontrará","Aguardo respuesta","Conversación"],1),q("'Aguardo seu retorno' es:",["Despedida","Para su info","Quedo a la espera","Adjunto"],2)]),
+]},
+{title:"Nivel Experto",subtitle:"Português avançado",lessons:[
+mk("p11","Agronegócio","🌾",[v("Fazenda","Estancia / Finca","Quero comprar uma fazenda."),v("Hectares","Hectáreas","Quantos hectares tem?"),v("Soja","Soja","O Paraguai exporta muita soja."),v("Gado","Ganado","Temos 500 cabeças de gado."),v("Colheita","Cosecha","A colheita é em março.")],[q("'Fazenda' es:",["Cosecha","Ganado","Estancia/Finca","Soja"],2),q("'Gado' es:",["Soja","Cosecha","Hectáreas","Ganado"],3),q("'Colheita' es:",["Estancia","Soja","Cosecha","Ganado"],2)]),
+mk("p12","Finanças","🏦",[v("Abrir uma conta","Abrir una cuenta","Preciso abrir uma conta."),v("Taxa de câmbio","Tipo de cambio","Qual é a taxa de câmbio?"),v("Transferência","Transferencia","Vou fazer uma transferência."),v("Imposto baixo","Impuesto bajo","O imposto no Paraguai é muito baixo."),v("Investimento seguro","Inversión segura","É um investimento seguro.")],[q("'Taxa de câmbio' es:",["Transferencia","Tipo de cambio","Cuenta","Impuesto"],1),q("'Imposto baixo' es:",["Tipo de cambio","Inversión segura","Impuesto bajo","Transferencia"],2),q("'Investimento seguro' es:",["Impuesto","Cuenta","Tipo de cambio","Inversión segura"],3)]),
+mk("p13","Imóveis","🏠",[v("Escritura","Escritura de propiedad","Preciso da escritura."),v("Metros quadrados","Metros cuadrados","Quantos metros quadrados?"),v("Entrada","Seña / Pago inicial","Qual é o valor da entrada?"),v("Financiamento","Financiamiento","Tem financiamento disponível?"),v("Valorização","Valorización","A valorização é excelente.")],[q("'Escritura' es:",["Financiamiento","Escritura de propiedad","Metros cuadrados","Entrada"],1),q("'Entrada' es:",["Financiamiento","Valorización","Seña/Pago inicial","Escritura"],2),q("'Valorização' es:",["Entrada","Escritura","Metros cuadrados","Valorización"],3)]),
+mk("p14","Energia e Cripto","⚡",[v("Mineração de Bitcoin","Minería de Bitcoin","A mineração é lucrativa aqui."),v("Custo de energia","Costo de energía","O custo de energia é baixíssimo."),v("Equipamento","Equipamiento","Preciso de equipamento."),v("Rentabilidade","Rentabilidad","A rentabilidade é excelente."),v("Criptomoeda","Criptomoneda","Invisto em criptomoeda.")],[q("'Custo de energia' es:",["Bitcoin","Costo de energía","Equipamiento","Rentabilidad"],1),q("'Rentabilidade' es:",["Bitcoin","Energía","Rentabilidad","Cripto"],2),q("'Criptomoeda' es:",["Energía","Equipamiento","Rentabilidad","Criptomoneda"],3)]),
+mk("p15","Viver no Paraguai","🇵🇾",[v("Residência permanente","Residencia permanente","Como obter residência permanente?"),v("Custo de vida baixo","Costo de vida bajo","O custo de vida é muito baixo."),v("Povo acolhedor","Gente acogedora","O povo paraguaio é muito acolhedor."),v("Segurança jurídica","Seguridad jurídica","Há segurança jurídica total."),v("País do futuro","País del futuro","O Paraguai é o país do futuro.")],[q("'Residência permanente' es:",["Costo de vida","Gente acogedora","Residencia permanente","Seg. jurídica"],2),q("'Custo de vida baixo' es:",["Residencia","Costo de vida bajo","Seg. jurídica","País del futuro"],1),q("'País do futuro' es:",["Gente acogedora","Costo de vida","Seg. jurídica","País del futuro"],3)]),
+]},
+]},
+espanol:{id:"espanol",name:"Español",emoji:"💎",premium:true,tagline:"Para inversores en Paraguay",color:"#7c2d12",accent:"#f97316",bg:"#fff7ed",
+units:[
+{title:"Básico",subtitle:"Primeros pasos en Paraguay",lessons:[
+mk("e1","Bienvenida","🇵🇾",[v("¡Bienvenido!","Welcome!","¡Bienvenido a Paraguay!"),v("Encantado de conocerle","Delighted to meet you","Encantado, soy Richard."),v("¿En qué puedo servirle?","How can I help?","¿En qué puedo servirle?"),v("Con mucho gusto","With pleasure","Con mucho gusto."),v("A su disposición","At your disposal","Estamos a su disposición.")],[q("'¡Bienvenido!' in English:",["Goodbye","Welcome","Thank you","Hello"],1),q("'¿En qué puedo servirle?' means:",["How are you?","How can I help?","Where are you?","How much?"],1),q("'A su disposición' means:",["Farewell","Nice to meet","At your disposal","Welcome"],2)]),
+mk("e2","Dinero","💵",[v("El guaraní","Paraguay's currency","Precio en guaraníes."),v("Tipo de cambio","Exchange rate","¿Tipo de cambio hoy?"),v("Un millón","One million","Un millón = ~$130 USD"),v("El presupuesto","Budget","¿Cuál es su presupuesto?"),v("La factura","Invoice","Le envío la factura.")],[q("'Tipo de cambio' means:",["Budget","Currency","Exchange rate","Million"],2),q("'El presupuesto' in English:",["Exchange rate","Invoice","Budget","Currency"],2),q("¿Cuál es la moneda de Paraguay?",["Peso","Dólar","Real","Guaraní"],3)]),
+mk("e3","Paraguay","🏛️",[v("Zona franca","Free trade zone","Zonas francas en CDE."),v("El impuesto","Tax","Impuesto muy bajo."),v("La frontera","Border","Frontera con Brasil."),v("El gobierno","Government","Gobierno fomenta inversión."),v("La oportunidad","Opportunity","Gran oportunidad.")],[q("'Zona franca' in English:",["Tax zone","Free trade zone","Border","Government"],1),q("'El impuesto' means:",["Border","Government","Opportunity","Tax"],3),q("¿Qué fomenta el gobierno?",["Exportaciones","Impuestos altos","Inversión extranjera","Turismo"],2)]),
+mk("e4","Inversiones","📈",[v("Invertir","To invest","Me gustaría invertir."),v("La rentabilidad","Profitability","Rentabilidad muy alta."),v("El bien raíz","Real estate","Bienes raíces en auge."),v("El socio","Partner","Busco socio local."),v("El proyecto","Project","Proyecto rentable.")],[q("'El bien raíz' in English:",["Stock market","Real estate","Partnership","Project"],1),q("'La rentabilidad' means:",["El socio","Invertir","Profitability","El proyecto"],2),q("'El socio' in English:",["Project","Investor","Partner","Real estate"],2)]),
+]},
+{title:"Intermedio",subtitle:"Moverse por Paraguay",lessons:[
+mk("e5","Legal","⚖️",[v("El contrato","Contract","Firmamos el contrato."),v("La escritura","Property deed","Escritura lista."),v("El notario","Notary","Notario certifica."),v("La empresa","Company","Abro una empresa."),v("El registro","Registration","Registro rápido.")],[q("'El contrato' in English:",["Deed","Notary","Contract","Registration"],2),q("'La escritura' is:",["Contrato","Property deed","Empresa","Notario"],1),q("'El notario' in English:",["Company","Contract","Registration","Notary"],3)]),
+mk("e6","Ciudad","🚕",[v("El aeropuerto","Airport","Silvio Pettirossi."),v("El taxi","Taxi","Tomamos un taxi."),v("El centro","Downtown","Oficinas en el centro."),v("Villa Morra","Financial district","Barrio financiero."),v("La avenida","Avenue","Avenida España.")],[q("'El aeropuerto' in English:",["Taxi","Downtown","Airport","Avenue"],2),q("'El centro' means:",["Barrio","Airport","Avenue","Downtown"],3),q("Villa Morra es:",["Aeropuerto","Barrio financiero","Centro histórico","Zona franca"],1)]),
+mk("e7","Cultura","🍖",[v("La chipa","Cheese bread","La chipa = snack #1."),v("El tereré","National drink","Bebida nacional."),v("La sopa paraguaya","Corn bread","¡No es sopa líquida!"),v("El asado","BBQ","Asado los domingos."),v("La mandioca","Cassava","Base de la dieta.")],[q("'Sopa paraguaya' is:",["Liquid soup","Corn bread","A drink","BBQ"],1),q("'El tereré' is:",["National drink","A dish","Dessert","Liquor"],0),q("'La chipa' es:",["Asado","Bebida","Pan de queso","Sopa"],2)]),
+]},
+{title:"Avanzado",subtitle:"Cerrar tratos",lessons:[
+mk("e8","Reuniones","📋",[v("La reunión","Meeting","Reunión mañana."),v("La propuesta","Proposal","Envío la propuesta."),v("El acuerdo","Agreement","Llegamos a un acuerdo."),v("La presentación","Presentation","Presentación 30 min."),v("Próximos pasos","Next steps","¿Próximos pasos?")],[q("'La propuesta' in English:",["Meeting","Agreement","Proposal","Presentation"],2),q("'Llegamos a un acuerdo' means:",["Had meeting","Made presentation","Reached agreement","Sent proposal"],2),q("'Próximos pasos' are:",["Last steps","Main steps","Next steps","Business steps"],2)]),
+mk("e9","Negociación","🤝",[v("Negociar","Negotiate","Podemos negociar."),v("Las condiciones","Terms","Condiciones favorables."),v("El descuento","Discount","¿Tiene descuento?"),v("El plazo","Deadline/Term","Plazo 30 días."),v("Cerrar el trato","Close the deal","Cerramos el trato.")],[q("'El plazo' means:",["Discount","Negotiate","Deadline","Conditions"],2),q("'Cerrar el trato' in English:",["Negotiate","Give discount","Set conditions","Close the deal"],3),q("'Las condiciones' in English:",["Deadlines","Discounts","Conditions/Terms","Deals"],2)]),
+mk("e10","Vivir en Paraguay","🌟",[v("La residencia","Residency","Residencia fácil."),v("Costo de vida","Cost of living","Costo muy bajo."),v("Seguridad jurídica","Legal security","Seguridad total."),v("Calidad de vida","Quality of life","Calidad excelente."),v("El futuro","The future","Futuro prometedor.")],[q("'La residencia' in English:",["Future","Residency","Cost of living","Legal security"],1),q("'Costo de vida' means:",["Quality of life","Legal security","Cost of living","Residency"],2),q("'Seguridad jurídica' is:",["Residency","Future","Cost of living","Legal security"],3)]),
+]},
+{title:"Nivel Experto",subtitle:"Español para grandes inversores",lessons:[
+mk("e11","Banca y Finanzas","🏦",[v("Abrir una cuenta","Open a bank account","Quiero abrir una cuenta."),v("La billetera digital","Digital wallet","Uso una billetera digital."),v("La transferencia","Wire transfer","Voy a hacer una transferencia."),v("El rendimiento","Return / Yield","El rendimiento es del 15% anual."),v("La cartera de inversión","Investment portfolio","Mi cartera de inversión crece.")],[q("'La transferencia' in English:",["Digital wallet","Bank account","Wire transfer","Portfolio"],2),q("'El rendimiento' means:",["Transfer","Bank account","Digital wallet","Return/Yield"],3),q("'La cartera de inversión' is:",["Digital wallet","Investment portfolio","Transfer","Bank account"],1)]),
+mk("e12","Sector Agropecuario","🌾",[v("La estancia","The ranch","Compré una estancia de 500 has."),v("Las hectáreas","Hectares","¿Cuántas hectáreas tiene?"),v("La soja","Soybean","Paraguay exporta millones de soja."),v("El ganadero","The rancher","Soy ganadero desde hace 10 años."),v("La zafra","Harvest season","La zafra empieza en abril.")],[q("'La estancia' in English:",["Hectáreas","Soja","The ranch","Harvest"],2),q("'La zafra' means:",["The rancher","Soybean","Hectares","Harvest season"],3),q("'El ganadero' is:",["The ranch","The rancher","Soybean","Hectares"],1)]),
+mk("e13","Energía y Cripto","⚡",[v("La granja de Bitcoin","Bitcoin farm","Tengo una granja de Bitcoin en Paraguay."),v("La energía eléctrica","Electricity","La energía eléctrica es baratísima."),v("El equipo de minería","Mining equipment","Importé equipos de minería."),v("La rentabilidad","Profitability","La rentabilidad es excepcional."),v("La criptomoneda","Cryptocurrency","Invierto en criptomoneda.")],[q("'La granja de Bitcoin' is:",["Electricity","Mining equipment","Bitcoin farm","Profitability"],2),q("'La energía eléctrica' means:",["Bitcoin farm","Electricity","Profitability","Cryptocurrency"],1),q("'La rentabilidad' is:",["Bitcoin farm","Mining equipment","Electricity","Profitability"],3)]),
+mk("e14","Gastronomía y Ocio","🍖",[v("El churrasco","BBQ / Grilled beef","Vamos a un churrasco el domingo."),v("El ka'ay","Paraguayan herbal drink","El ka'ay es el tereré frío."),v("La costanera","The riverside boulevard","La costanera de Asunción es hermosa."),v("El folklor","Folklore","El folklor paraguayo es único."),v("El casino","The casino","Asunción tiene excelentes casinos.")],[q("'El churrasco' is:",["Folklore","Riverside","BBQ/Grilled beef","Casino"],2),q("'La costanera' means:",["Churrasco","Folklor","Riverside boulevard","Casino"],2),q("'El ka'ay' es:",["Churrasco","Bebida herbal paraguaya","Casino","Folklor"],1)]),
+mk("e15","Paraguay: El Gran Secreto","🌟",[v("El paraíso fiscal","Tax haven","Paraguay es casi un paraíso fiscal."),v("La puerta de Sudamérica","Gateway to South America","Paraguay es la puerta de Sudamérica."),v("El potencial inexplorado","Unexplored potential","Enorme potencial inexplorado."),v("La oportunidad histórica","Historic opportunity","Es una oportunidad histórica."),v("El mejor momento","The best moment","Este es el mejor momento para invertir.")],[q("'El paraíso fiscal' is:",["Tax haven","Gateway","Potential","Opportunity"],0),q("'La puerta de Sudamérica' means:",["Tax haven","Gateway to South America","Opportunity","Moment"],1),q("'El mejor momento' es:",["Paraíso fiscal","Puerta","Potencial","The best moment"],3)]),
+]},
+]},
+frances:{id:"frances",name:"Français",emoji:"🥐",premium:false,
+tagline:"Pour les investisseurs francophones",color:"#1e3a5f",accent:"#3b82f6",bg:"#dbeafe",
+units:[
+{title:"Básico",subtitle:"Premiers mots",lessons:[
+mk("f1","Salutations","👋",
+[v("Bonjour!","¡Buenos días!","Bonjour, comment allez-vous?"),v("Enchanté(e)","Mucho gusto","Je suis Richard. Enchanté!"),v("Merci","Gracias","Merci beaucoup!"),v("S'il vous plaît","Por favor","S'il vous plaît, aidez-moi."),v("Au revoir","Hasta luego","Au revoir et bonne journée!")],
+[q("¿Cómo se dice 'Buenos días'?",["Bonsoir","Bonjour","Bonne nuit","Salut"],1),q("'Enchanté' significa:",["Hasta luego","Gracias","Mucho gusto","Por favor"],2),q("'Merci' es:",["Por favor","De nada","Hasta luego","Gracias"],3)]),
+mk("f2","Chiffres","🔢",
+[v("Un / Une","Uno","Un café, s'il vous plaît."),v("Deux","Dos","Deux billets, merci."),v("Trois","Tres","Trois jours au Paraguay."),v("Dix","Diez","Dix millions de guaraníes."),v("Cent","Cien","Cent dollars."),],
+[q("'Deux' es:",["1","3","2","4"],2),q("'Dix' significa:",["Cinco","Diez","Cien","Veinte"],1),q("'Cent' es:",["Diez","Mil","Cien","Cincuenta"],2)]),
+mk("f3","Au Restaurant","🍽️",
+[v("Je voudrais...","Quisiera...","Je voudrais un steak."),v("L'addition, s'il vous plaît","La cuenta, por favor","L'addition, s'il vous plaît!"),v("C'est délicieux","Está delicioso","C'est vraiment délicieux!"),v("Qu'est-ce que vous recommandez?","¿Qué recomienda?","Qu'est-ce que vous recommandez?"),v("Sans gluten","Sin gluten","Je voudrais quelque chose sans gluten.")],
+[q("'Je voudrais' significa:",["Gracias","La cuenta","Quisiera","Está delicioso"],2),q("'C'est délicieux' es:",["La cuenta","Está delicioso","Quisiera","Sin gluten"],1),q("¿Cómo pedís la cuenta?",["Je voudrais","C'est délicieux","L'addition","Sans gluten"],2)]),
+mk("f4","En Ville","🏙️",
+[v("Où est...?","¿Dónde está...?","Où est la banque?"),v("À gauche","A la izquierda","Tournez à gauche."),v("À droite","A la derecha","Tournez à droite."),v("Tout droit","Todo recto","Allez tout droit."),v("C'est loin?","¿Está lejos?","C'est loin d'ici?")],
+[q("'Où est...?' significa:",["¿Lejos?","¿Dónde está?","A la derecha","Todo recto"],1),q("'À gauche' es:",["Derecha","Recto","Izquierda","Lejos"],2),q("'Tout droit' es:",["Izquierda","Todo recto","Derecha","¿Lejos?"],1)]),
+]},
+{title:"Intermedio",subtitle:"Français au quotidien",lessons:[
+mk("f5","À l'Hôtel","🏨",
+[v("J'ai une réservation","Tengo una reserva","J'ai une réservation au nom de Richard."),v("Chambre double","Habitación doble","Une chambre double, s'il vous plaît."),v("Mot de passe WiFi","Clave WiFi","Quel est le mot de passe WiFi?"),v("Petit-déjeuner inclus?","¿Desayuno incluido?","Le petit-déjeuner est-il inclus?"),v("Check-out","Check-out","Je vais faire mon check-out demain.")],
+[q("'J'ai une réservation' significa:",["Hab. doble","WiFi","Tengo una reserva","Check-out"],2),q("'Chambre double' es:",["Habitación doble","Desayuno","WiFi","Check-out"],0),q("¿Cómo preguntás el WiFi?",["J'ai une réservation","Chambre double","Mot de passe WiFi?","Check-out"],2)]),
+mk("f6","Transports","🚕",
+[v("J'ai besoin d'un taxi","Necesito un taxi","J'ai besoin d'un taxi, s'il vous plaît."),v("Combien de temps?","¿Cuánto tarda?","Combien de temps jusqu'à l'aéroport?"),v("Aller-retour","Ida y vuelta","Un billet aller-retour."),v("C'est loin?","¿Está lejos?","L'hôtel, c'est loin?"),v("L'aéroport","El aeropuerto","Où est l'aéroport?")],
+[q("'J'ai besoin d'un taxi' es:",["¿Lejos?","Aller-retour","Necesito un taxi","El aeropuerto"],2),q("'Aller-retour' es:",["Solo ida","El aeropuerto","¿Cuánto tarda?","Ida y vuelta"],3),q("'Combien de temps?' es:",["El aeropuerto","¿Está lejos?","¿Cuánto tarda?","Necesito taxi"],2)]),
+mk("f7","En Réunion","📋",
+[v("Permettez-moi de me présenter","Permítame presentarme","Permettez-moi de me présenter."),v("Comme je l'ai mentionné","Como mencioné","Comme je l'ai mentionné..."),v("Notre entreprise","Nuestra empresa","Notre entreprise est en croissance."),v("Je vais envoyer par email","Voy a enviar por email","Je vais envoyer les détails par email."),v("Prochaines étapes","Próximos pasos","Quelles sont les prochaines étapes?")],
+[q("'Prochaines étapes' es:",["Me presento","Próximos pasos","Nuestra empresa","Como mencioné"],1),q("'Notre entreprise' es:",["Email","Próximos pasos","Como mencioné","Nuestra empresa"],3),q("'Je vais envoyer par email' es:",["Presentarme","Próximos pasos","Enviaré por email","Como mencioné"],2)]),
+]},
+{title:"Avanzado",subtitle:"Français des affaires",lessons:[
+mk("f8","Investissement","📈",
+[v("Opportunité de marché","Oportunidad de mercado","C'est une grande opportunité."),v("Retour sur investissement","Retorno de inversión","Le ROI est de 30%."),v("Partenariat","Sociedad/Alianza","Je propose un partenariat."),v("Marché en croissance","Mercado en crecimiento","Le Paraguay est en croissance."),v("Capitaux étrangers","Capital extranjero","Nous attirons des capitaux étrangers.")],
+[q("'Partenariat' significa:",["Oportunidad","Retorno","Sociedad/Alianza","Capital"],2),q("'Marché en croissance' es:",["Capital","Retorno","Partenariat","Mercado en crecimiento"],3),q("'Capitaux étrangers' es:",["Partenariat","Retorno","Oportunidad","Capital extranjero"],3)]),
+mk("f9","Négociation","🤝",
+[v("Je voudrais proposer","Me gustaría proponer","Je voudrais proposer un accord."),v("Quelles sont vos conditions?","¿Cuáles son sus condiciones?","Quelles sont vos conditions?"),v("Nous pouvons offrir","Podemos ofrecer","Nous pouvons offrir 15%."),v("C'est conclu!","¡Trato cerrado!","Parfait, c'est conclu!"),v("Signer le contrat","Firmar el contrato","Nous allons signer le contrat.")],
+[q("'C'est conclu!' es:",["¿Condiciones?","Proponer","¡Trato cerrado!","Ofrecer"],2),q("'Je voudrais proposer' es:",["Firmar","Me gustaría proponer","¿Condiciones?","Podemos ofrecer"],1),q("'Signer le contrat' es:",["¿Condiciones?","¡Cerrado!","Ofrecer","Firmar el contrato"],3)]),
+mk("f10","Vivre au Paraguay","🌟",
+[v("La résidence","La residencia","La résidence est facile à obtenir."),v("Coût de la vie","Costo de vida","Le coût de la vie est très bas."),v("Sécurité juridique","Seguridad jurídica","Il y a une sécurité juridique totale."),v("Qualité de vie","Calidad de vida","La qualité de vie est excellente."),v("L'avenir","El futuro","L'avenir du Paraguay est prometteur.")],
+[q("'La résidence' en español:",["El futuro","La residencia","Costo de vida","Seg. jurídica"],1),q("'Coût de la vie' es:",["Calidad de vida","Seg. jurídica","Costo de vida","Residencia"],2),q("'L'avenir' significa:",["Residencia","Costo de vida","Seg. jurídica","El futuro"],3)]),
+]},
+]},
+};
+// ── TRANSLATOR COMPONENT ──────────────────────────────────────────────────────
+function Translator(){
+const [from,setFrom]=useState("es");
+const [to,setTo]=useState("en");
+const [text,setText]=useState("");
+const [result,setResult]=useState("");
+const [loading,setLoading]=useState(false);
+const DICT={
+es_en:{"hola":"hello","buenos días":"good morning","gracias":"thank you","¿cómo estás?":"how are you?","mucho gusto":"nice to meet you","hasta luego":"see you later","por favor":"please","sí":"yes","no":"no","dinero":"money","inversión":"investment","contrato":"contract","empresa":"company","quiero invertir":"I want to invest","¿cuánto cuesta?":"how much does it cost?","bienvenido":"welcome"},
+en_es:{"hello":"hola","good morning":"buenos días","thank you":"gracias","how are you?":"¿cómo estás?","nice to meet you":"mucho gusto","see you later":"hasta luego","please":"por favor","yes":"sí","no":"no","money":"dinero","investment":"inversión","contract":"contrato","company":"empresa","i want to invest":"quiero invertir","welcome":"bienvenido"},
+es_pt:{"hola":"olá","buenos días":"bom dia","gracias":"obrigado","¿cómo estás?":"tudo bem?","mucho gusto":"muito prazer","hasta luego":"até logo","por favor":"por favor","sí":"sim","no":"não","dinero":"dinheiro","inversión":"investimento","contrato":"contrato","empresa":"empresa","quiero invertir":"quero investir","¿cuánto cuesta?":"quanto custa?"},
+pt_es:{"olá":"hola","bom dia":"buenos días","obrigado":"gracias","tudo bem?":"¿cómo estás?","muito prazer":"mucho gusto","até logo":"hasta luego","por favor":"por favor","sim":"sí","não":"no","dinheiro":"dinero","investimento":"inversión","contrato":"contrato","empresa":"empresa"},
+es_fr:{"hola":"bonjour","buenos días":"bonjour","gracias":"merci","¿cómo estás?":"comment allez-vous?","mucho gusto":"enchanté","hasta luego":"au revoir","por favor":"s'il vous plaît","sí":"oui","no":"non","dinero":"argent","inversión":"investissement","contrato":"contrat","empresa":"entreprise","quiero invertir":"je voudrais investir","¿cuánto cuesta?":"combien ça coûte?","bienvenido":"bienvenue"},
+fr_es:{"bonjour":"hola / buenos días","merci":"gracias","enchanté":"mucho gusto","au revoir":"hasta luego","s'il vous plaît":"por favor","oui":"sí","non":"no","argent":"dinero","investissement":"inversión","contrat":"contrato","entreprise":"empresa","je voudrais investir":"quiero invertir","bienvenue":"bienvenido","combien ça coûte?":"¿cuánto cuesta?"},
+fr_en:{"bonjour":"hello / good morning","merci":"thank you","enchanté":"nice to meet you","au revoir":"goodbye / see you later","s'il vous plaît":"please","oui":"yes","non":"no","argent":"money","investissement":"investment","contrat":"contract","entreprise":"company","je voudrais investir":"I want to invest","bienvenue":"welcome","combien ça coûte?":"how much does it cost?","comment allez-vous?":"how are you?"},
+en_fr:{"hello":"bonjour","good morning":"bonjour","thank you":"merci","nice to meet you":"enchanté","see you later":"au revoir","please":"s'il vous plaît","yes":"oui","no":"non","money":"argent","investment":"investissement","contract":"contrat","company":"entreprise","i want to invest":"je voudrais investir","welcome":"bienvenue","how much does it cost?":"combien ça coûte?"},
+fr_pt:{"bonjour":"olá / bom dia","merci":"obrigado","enchanté":"muito prazer","au revoir":"até logo","s'il vous plaît":"por favor","oui":"sim","non":"não","argent":"dinheiro","investissement":"investimento","contrat":"contrato","entreprise":"empresa","je voudrais investir":"quero investir"},
+pt_fr:{"olá":"bonjour","bom dia":"bonjour","obrigado":"merci","muito prazer":"enchanté","até logo":"au revoir","por favor":"s'il vous plaît","sim":"oui","não":"non","dinheiro":"argent","investimento":"investissement","contrato":"contrat","empresa":"entreprise"},
+es_gn:{"hola":"mba'éichapa","gracias":"aguyje","te quiero":"rohayhu","hasta luego":"jajotopáta","sí":"ã'ã","no":"nahániri","bueno":"porã","malo":"vai","mamá":"sy","papá":"túva","agua":"y","trabajar":"robasa"},
+gn_es:{"mba'éichapa":"hola / ¿cómo estás?","aguyje":"gracias","rohayhu":"te quiero","jajotopáta":"hasta luego","iporãite":"estoy bien","sy":"mamá","túva":"papá","mitã'i":"niño","memby":"hijo/a","añete":"de verdad"},
+};
+const LANGS_OPT=[{k:"es",l:"Español 🇵🇾"},{k:"en",l:"Inglés 🌎"},{k:"pt",l:"Português 🌿"},{k:"fr",l:"Français 🥐"},{k:"gn",l:"Guaraní 🐆"}];
+const QUICK_PHRASES=[
+{cat:"🤝 Negocios",phrases:[{es:"¿Cuánto cuesta?",en:"How much does it cost?",pt:"Quanto custa?",fr:"Combien ça coûte?"},{es:"Quiero invertir",en:"I want to invest",pt:"Quero investir",fr:"Je voudrais investir"},{es:"Hagamos un trato",en:"Let's make a deal",pt:"Vamos fechar negócio",fr:"Concluons l'affaire"}]},
+{cat:"🏛️ Paraguay",phrases:[{es:"¿Dónde está el centro?",en:"Where is downtown?",pt:"Onde fica o centro?",fr:"Où est le centre-ville?"},{es:"Necesito un taxi",en:"I need a taxi",pt:"Preciso de táxi",fr:"J'ai besoin d'un taxi"},{es:"¿Acepta tarjetas?",en:"Do you accept cards?",pt:"Aceita cartão?",fr:"Acceptez-vous les cartes?"}]},
+{cat:"🌾 Campo",phrases:[{es:"Quiero comprar una estancia",en:"I want to buy a ranch",pt:"Quero comprar uma estância",fr:"Je voudrais acheter un ranch"},{es:"¿Cuántas hectáreas tiene?",en:"How many hectares?",pt:"Quantos hectares tem?",fr:"Combien d'hectares?"}]},
+];
+const translate=()=>{
+if(!text.trim())return;
+setLoading(true);
+setTimeout(()=>{
+const key=`${from}_${to}`;
+const dict=DICT[key]||{};
+const lower=text.toLowerCase().trim();
+let res=dict[lower];
+if(!res){
+const words=lower.split(" ");
+const translated=words.map(w=>dict[w]||w);
+res=translated.join(" ");
+if(res===lower)res="[Traducción no disponible — próximamente más vocabulario]";
+}
+setResult(res);setLoading(false);
+},600);
+};
+const swap=()=>{const t=from;setFrom(to);setTo(t);setText(result);setResult("");};
+return(
+<div style={{padding:"20px"}}>
+<div style={{fontSize:13,fontWeight:700,color:T.muted,letterSpacing:1,textTransform:"uppercase",marginBottom:16}}>Traductor</div>
+<div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
+<select value={from} onChange={e=>setFrom(e.target.value)} style={{flex:1,border:`1.5px solid ${T.border}`,borderRadius:10,padding:"10px 12px",fontSize:14,background:"#fff",outline:"none"}}>
+{LANGS_OPT.map(l=><option key={l.k} value={l.k}>{l.l}</option>)}
+</select>
+<button onClick={swap} style={{background:T.light,border:"none",borderRadius:10,padding:"10px 14px",cursor:"pointer",fontSize:16}}>⇄</button>
+<select value={to} onChange={e=>setTo(e.target.value)} style={{flex:1,border:`1.5px solid ${T.border}`,borderRadius:10,padding:"10px 12px",fontSize:14,background:"#fff",outline:"none"}}>
+{LANGS_OPT.map(l=><option key={l.k} value={l.k}>{l.l}</option>)}
+</select>
+</div>
+<textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Escribí el texto a traducir..." rows={4}
+style={{width:"100%",border:`1.5px solid ${T.border}`,borderRadius:12,padding:"14px",fontSize:14,resize:"none",outline:"none",background:"#fff",marginBottom:10}}/>
+<button onClick={translate} disabled={loading||!text.trim()}
+style={{width:"100%",background:"#1a3a5c",color:"#fff",border:"none",borderRadius:14,padding:"15px",fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:14,opacity:loading||!text.trim()?0.6:1}}>
+{loading?"Traduciendo...":"Traducir →"}
+</button>
+{result&&(
+<div style={{background:"#dbeafe",borderRadius:14,padding:"16px",border:"1.5px solid #4895ef"}}>
+<div style={{fontSize:11,fontWeight:700,color:"#1a3a5c",letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>Traducción</div>
+<div style={{fontSize:16,fontWeight:600,color:"#1a1509",lineHeight:1.5}}>{result}</div>
+</div>
+)}
+<div style={{marginTop:16,background:"#fff9e6",borderRadius:12,padding:"12px 14px",border:"1px dashed #f0a500"}}>
+<div style={{fontSize:12,fontWeight:700,color:"#c07000",marginBottom:4}}>🌟 ¿Necesitás un traductor humano?</div>
+<div style={{fontSize:12,color:"#8a7040"}}>Tenemos traductores certificados online y presencial. Ver sección "Servicios".</div>
+</div>
+<div style={{marginTop:20}}>
+<div style={{fontSize:12,fontWeight:700,color:T.muted,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>⚡ Frases rápidas para Paraguay</div>
+{QUICK_PHRASES.map(cat=>(
+<div key={cat.cat} style={{marginBottom:16}}>
+<div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:8}}>{cat.cat}</div>
+{cat.phrases.map((ph,i)=>(
+<div key={i} onClick={()=>{setText(ph.es||"");setResult("");}}
+style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:12,padding:"12px 14px",marginBottom:8,cursor:"pointer"}}>
+<div style={{fontSize:13,fontWeight:600,color:"#1a1509",marginBottom:6}}>{ph.es}</div>
+<div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+{ph.en&&<span style={{background:"#dbeafe",color:"#1a3a5c",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:600}}>EN: {ph.en}</span>}
+{ph.pt&&<span style={{background:"#dcfce7",color:"#2d4a00",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:600}}>PT: {ph.pt}</span>}
+{ph.fr&&<span style={{background:"#ede9fe",color:"#5b21b6",borderRadius:20,padding:"2px 10px",fontSize:11,fontWeight:600}}>FR: {ph.fr}</span>}
+</div>
+</div>
+))}
+</div>
+))}
+</div>
+</div>
+);
+}
+// ── AD BANNER ─────────────────────────────────────────────────────────────────
+function AdBanner({idx=0}){
+const s=SPONSORS[idx%SPONSORS.length];
+return(
+<div style={{margin:"12px 0",background:`linear-gradient(135deg,${s.color}18,${s.color}08)`,border:`1.5px solid ${s.color}40`,borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",gap:12}}>
+<div style={{fontSize:26,width:42,height:42,borderRadius:12,background:`${s.color}18`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{s.logo}</div>
+<div style={{flex:1}}>
+<div style={{fontSize:10,fontWeight:700,color:s.color,letterSpacing:1,textTransform:"uppercase"}}>Publicidad</div>
+<div style={{fontSize:13,fontWeight:700,color:T.text}}>{s.name}</div>
+<div style={{fontSize:11,color:T.muted}}>{s.tagline}</div>
+</div>
+</div>
+);
+}
+// ── CERT MODAL ────────────────────────────────────────────────────────────────
+function CertModal({lang,name,onClose}){
+const today=new Date().toLocaleDateString("es-PY",{day:"2-digit",month:"long",year:"numeric"});
+return(
+<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.65)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:"20px"}}>
+<div style={{background:"#fff",borderRadius:24,padding:"32px 24px",maxWidth:400,width:"100%",textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
+<div style={{fontSize:48,marginBottom:8}}>🏅</div>
+<div style={{fontSize:11,fontWeight:700,letterSpacing:3,color:lang.accent,textTransform:"uppercase",marginBottom:6}}>Certificado de Finalización</div>
+<div style={{fontSize:18,fontWeight:800,color:T.text,marginBottom:4}}>Mbo'ehàra</div>
+<div style={{height:1,background:T.border,margin:"10px 0"}}/>
+<div style={{fontSize:13,color:T.muted,marginBottom:4}}>Este certificado acredita que</div>
+<div style={{fontSize:20,fontWeight:800,color:lang.color,margin:"8px 0"}}>{name||"Estudiante"}</div>
+<div style={{fontSize:13,color:T.muted,marginBottom:4}}>completó exitosamente</div>
+<div style={{fontSize:17,fontWeight:700,color:T.text,marginBottom:4}}>{lang.emoji} {lang.name} — Nivel Completo</div>
+<div style={{fontSize:12,color:T.muted,marginBottom:14}}>{today}</div>
+<div style={{background:lang.bg,borderRadius:12,padding:"8px 16px",fontSize:11,color:lang.color,fontWeight:700,marginBottom:16}}>Mbo'ehàra · Paraguay 🇵🇾 · Del Paraguay al mundo</div>
+<button onClick={onClose} style={{width:"100%",background:lang.color,color:"#fff",border:"none",borderRadius:14,padding:"14px",fontSize:15,fontWeight:700,cursor:"pointer"}}>Cerrar</button>
+</div>
+</div>
+);
+}
+// ── PRIVACY POLICY ────────────────────────────────────────────────────────────
+function PrivacyPolicy({onClose}){
+return(
+<div style={{position:"fixed",inset:0,background:"#fff",zIndex:400,overflowY:"auto",fontFamily:"'Sora',sans-serif"}}>
+<div style={{background:"linear-gradient(135deg,#1a3a5c,#c0392b)",padding:"28px 24px 20px",position:"sticky",top:0,zIndex:10}}>
+<button onClick={onClose} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",borderRadius:10,padding:"6px 14px",cursor:"pointer",fontSize:13,marginBottom:12}}>← Volver</button>
+<div style={{fontSize:22,fontWeight:800,color:"#fff"}}>Política de Privacidad</div>
+<div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginTop:4}}>Mbo'ehàra · Última actualización: 2025</div>
+</div>
+<div style={{padding:"24px 20px 60px",maxWidth:480,margin:"0 auto"}}>
+<div style={{background:"#d8f3dc",borderRadius:14,padding:"16px",marginBottom:24,border:"1px solid #52b788"}}>
+<div style={{fontSize:14,fontWeight:700,color:"#1b4332",marginBottom:6}}>🔒 Tu privacidad es nuestra prioridad</div>
+<div style={{fontSize:13,color:"#2d4a00",lineHeight:1.6}}>Mbo'ehàra cumple con las normativas de protección de datos vigentes en la República del Paraguay y los estándares internacionales de seguridad digital. Tus datos nunca son vendidos a terceros.</div>
+</div>
+{[
+{title:"1. ¿Qué datos recolectamos?",content:"Recolectamos únicamente los datos que vos nos proporcionás voluntariamente al registrarte: nombre completo, dirección de email, país de origen y contraseña (almacenada de forma encriptada). No recolectamos datos de pago, documentos de identidad ni información sensible sin tu consentimiento explícito."},
+{title:"2. ¿Para qué usamos tus datos?",content:"Tus datos se usan exclusivamente para: (a) gestionar tu cuenta y progreso de aprendizaje, (b) enviarte notificaciones sobre tu curso si lo solicitás, (c) mejorar la experiencia de la plataforma. Nunca usamos tus datos para publicidad de terceros sin tu consentimiento."},
+{title:"3. ¿Compartimos tus datos?",content:"No vendemos, alquilamos ni compartimos tus datos personales con terceros. Los proveedores de servicios que aparecen en nuestra plataforma son contactados únicamente cuando vos realizás una solicitud de contacto de forma voluntaria y explícita."},
+{title:"4. Seguridad de tus datos",content:"Utilizamos protocolos de encriptación estándar de la industria (HTTPS/TLS) para proteger toda la información transmitida. Las contraseñas se almacenan con hash seguro y nunca en texto plano. Realizamos revisiones periódicas de seguridad."},
+{title:"5. Cookies y tecnologías similares",content:"Mbo'ehàra puede usar cookies de sesión para mantener tu sesión activa mientras usás la plataforma. No usamos cookies de rastreo publicitario. Podés desactivar las cookies en la configuración de tu navegador en cualquier momento."},
+{title:"6. Tus derechos",content:"Tenés derecho a: (a) acceder a todos tus datos personales, (b) corregir datos incorrectos, (c) solicitar la eliminación completa de tu cuenta y datos, (d) portabilidad de tus datos en formato estándar. Para ejercer cualquiera de estos derechos, escribinos a privacidad@mboehara.py."},
+{title:"7. Menores de edad",content:"Mbo'ehàra está diseñada para mayores de 13 años. No recolectamos conscientemente datos de menores de 13 años. Si sos padre o tutor y creés que tu hijo proporcionó datos, contactanos inmediatamente."},
+{title:"8. Cambios en esta política",content:"Nos reservamos el derecho de actualizar esta política. Te notificaremos por email con al menos 30 días de anticipación ante cualquier cambio significativo. El uso continuado de la plataforma después de la notificación implica la aceptación de los cambios."},
+{title:"9. Legislación aplicable",content:"Esta política se rige por las leyes de la República del Paraguay, en particular la Ley N° 1682/01 sobre la protección de datos personales y sus modificaciones. Para disputas, las partes se someten a la jurisdicción de los tribunales de Asunción, Paraguay."},
+{title:"10. Contacto",content:"Para consultas sobre privacidad y protección de datos:\n📧 privacidad@mboehara.py\n📍 Asunción, Paraguay\n🌐 mboehara.py"},
+].map((sec,i)=>(
+<div key={i} style={{marginBottom:20}}>
+<div style={{fontSize:15,fontWeight:700,color:"#1a1509",marginBottom:8}}>{sec.title}</div>
+<div style={{fontSize:13,color:"#5a5047",lineHeight:1.7,whiteSpace:"pre-line"}}>{sec.content}</div>
+<div style={{height:1,background:"#e8e2d9",marginTop:16}}/>
+</div>
+))}
+<div style={{background:"#dbeafe",borderRadius:14,padding:"16px",marginTop:8}}>
+<div style={{fontSize:13,fontWeight:700,color:"#1a3a5c",marginBottom:4}}>✅ Certificación de seguridad</div>
+<div style={{fontSize:12,color:"#1a3a5c",lineHeight:1.6}}>Mbo'ehàra opera bajo los más altos estándares de seguridad digital. Nuestra plataforma usa conexión cifrada HTTPS en todos sus endpoints. Registrate con confianza.</div>
+</div>
+</div>
+</div>
+);
+}
+function AuthModal({onClose,onLogin}){
+const [mode,setMode]=useState("register");
+const [form,setForm]=useState({name:"",email:"",password:"",country:""});
+const [err,setErr]=useState("");
+const [loading,setLoading]=useState(false);
+const [forgotSent,setForgotSent]=useState(false);
+const [showForgot,setShowForgot]=useState(false);
+const [forgotEmail,setForgotEmail]=useState("");
+const COUNTRIES=["Argentina","Brasil","Uruguay","Chile","Colombia","México","España","Estados Unidos","Alemania","Israel","Emiratos Árabes Unidos","Italia","Francia","China","Otro"];
+const submit=()=>{
+setErr("");
+if(!form.email||!form.password){setErr("Completá email y contraseña.");return;}
+if(mode==="register"&&!form.name){setErr("Ingresá tu nombre completo.");return;}
+setLoading(true);
+setTimeout(()=>{
+setLoading(false);
+onLogin({name:form.name||form.email.split("@")[0],email:form.email,country:form.country||"Paraguay",premium:false});
+},900);
+};
+return(
+<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:300}}>
+<div style={{background:"#fff",borderRadius:"24px 24px 0 0",padding:"28px 24px 44px",width:"100%",maxWidth:480,boxShadow:"0 -8px 40px rgba(0,0,0,0.2)"}}>
+<div style={{width:40,height:4,background:"#e8e2d9",borderRadius:4,margin:"0 auto 20px"}}/>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+<div style={{fontSize:20,fontWeight:800,color:"#1a1509"}}>
+{mode==="login"?"Bienvenido de vuelta 👋":"Creá tu cuenta gratis 🚀"}
+</div>
+<button onClick={onClose} style={{background:"#f0ebe2",border:"none",borderRadius:10,padding:"6px 12px",cursor:"pointer",color:"#8a7f72",fontSize:14}}>✕</button>
+</div>
+<div style={{display:"flex",background:"#f0ebe2",borderRadius:12,padding:3,marginBottom:18}}>
+{[{k:"register",l:"Registrarse"},{k:"login",l:"Ya tengo cuenta"}].map(t=>(
+<button key={t.k} onClick={()=>{setMode(t.k);setErr("");}}
+style={{flex:1,padding:"10px",border:"none",borderRadius:10,cursor:"pointer",fontSize:12,fontWeight:700,background:mode===t.k?"#fff":"transparent",color:mode===t.k?"#1a1509":"#8a7f72",boxShadow:mode===t.k?"0 1px 4px rgba(0,0,0,0.1)":"none",transition:"all 0.2s"}}>
+{t.l}
+</button>
+))}
+</div>
+{mode==="register"&&(
+<input placeholder="Nombre completo" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}
+style={{width:"100%",border:"1.5px solid #e8e2d9",borderRadius:12,padding:"13px 16px",fontSize:14,marginBottom:10,outline:"none"}}/>
+)}
+<input placeholder="Email" type="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}
+style={{width:"100%",border:"1.5px solid #e8e2d9",borderRadius:12,padding:"13px 16px",fontSize:14,marginBottom:10,outline:"none"}}/>
+<input placeholder="Contraseña" type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})}
+style={{width:"100%",border:"1.5px solid #e8e2d9",borderRadius:12,padding:"13px 16px",fontSize:14,marginBottom:10,outline:"none"}}/>
+{mode==="register"&&(
+<select value={form.country} onChange={e=>setForm({...form,country:e.target.value})}
+style={{width:"100%",border:"1.5px solid #e8e2d9",borderRadius:12,padding:"13px 16px",fontSize:14,marginBottom:10,outline:"none",background:"#fff",color:form.country?"#1a1509":"#8a7f72"}}>
+<option value="">🌍 ¿Desde qué país venís?</option>
+<option value="Paraguay">🇵🇾 Paraguay</option>
+{COUNTRIES.map(c=><option key={c} value={c}>{c}</option>)}
+</select>
+)}
+{err&&<div style={{background:"#fde8e8",borderRadius:10,padding:"10px 14px",fontSize:13,color:"#c0392b",marginBottom:10}}>{err}</div>}
+<button onClick={submit} disabled={loading}
+style={{width:"100%",background:"linear-gradient(135deg,#c0392b,#1a3a5c)",color:"#fff",border:"none",borderRadius:14,padding:"16px",fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:12,opacity:loading?0.7:1}}>
+{loading?"⏳ Procesando...":(mode==="register"?"Crear cuenta gratis →":"Entrar →")}
+</button>
+{mode==="register"&&(
+<div style={{background:"#d8f3dc",borderRadius:12,padding:"12px 14px",fontSize:12,color:"#1b4332",lineHeight:1.5}}>
+🎁 Al registrarte: <strong>todos los idiomas desbloqueados</strong> + acceso al Centro de Servicios + código de referido personal
+</div>
+)}
+{mode==="login"&&!showForgot&&(
+<button onClick={()=>setShowForgot(true)} style={{background:"none",border:"none",color:"#8a7f72",fontSize:12,cursor:"pointer",textDecoration:"underline",marginTop:4}}>
+¿Olvidaste tu contraseña?
+</button>
+)}
+{showForgot&&(
+<div style={{background:"#eff6ff",borderRadius:14,padding:"16px",marginTop:8,border:"1px solid #bfdbfe"}}>
+{!forgotSent?(
+<>
+<div style={{fontSize:13,fontWeight:700,color:"#1a3a5c",marginBottom:10}}>🔑 Recuperar contraseña</div>
+<input placeholder="Tu email registrado" value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)}
+style={{width:"100%",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"11px 14px",fontSize:13,marginBottom:10,outline:"none"}}/>
+<div style={{display:"flex",gap:8}}>
+<button onClick={()=>setShowForgot(false)} style={{flex:1,background:"#e2e8f0",border:"none",borderRadius:10,padding:"10px",fontSize:13,cursor:"pointer"}}>Cancelar</button>
+<button onClick={()=>{if(forgotEmail)setForgotSent(true);}} style={{flex:2,background:"#1a3a5c",color:"#fff",border:"none",borderRadius:10,padding:"10px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Enviar →</button>
+</div>
+</>
+):(
+<div style={{textAlign:"center"}}>
+<div style={{fontSize:28,marginBottom:8}}>📧</div>
+<div style={{fontSize:13,fontWeight:700,color:"#1a3a5c",marginBottom:4}}>¡Email enviado!</div>
+<div style={{fontSize:12,color:"#3b82f6"}}>Revisá tu bandeja de entrada en <strong>{forgotEmail}</strong> para recuperar tu contraseña.</div>
+</div>
+)}
+</div>
+)}
+</div>
+</div>
+);
+}
+// ── SERVICES SECTION ──────────────────────────────────────────────────────────
+function ServicesSection(){
+const [activeTab,setActiveTab]=useState("servicios");
+const [selectedSvc,setSelectedSvc]=useState(null);
+const [selectedTranslator,setSelectedTranslator]=useState(null);
+const [contactForm,setContactForm]=useState({name:"",email:"",msg:""});
+const [sent,setSent]=useState(false);
+if(selectedSvc) return(
+<div style={{padding:"20px"}}>
+<button onClick={()=>setSelectedSvc(null)} style={{background:T.light,border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:13,marginBottom:20,fontFamily:"inherit"}}>← Volver</button>
+<div style={{width:56,height:56,borderRadius:16,background:selectedSvc.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30,marginBottom:14}}>{selectedSvc.icon}</div>
+<div style={{fontSize:22,fontWeight:800,color:T.text,marginBottom:6}}>{selectedSvc.title}</div>
+<div style={{fontSize:14,color:T.muted,marginBottom:20,lineHeight:1.6}}>{selectedSvc.desc}</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+<div style={{background:T.card,borderRadius:12,padding:"14px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+<div style={{fontSize:11,color:T.muted,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Precio</div>
+<div style={{fontSize:14,fontWeight:700,color:selectedSvc.color}}>{selectedSvc.price}</div>
+</div>
+<div style={{background:T.card,borderRadius:12,padding:"14px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+<div style={{fontSize:11,color:T.muted,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Tiempo</div>
+<div style={{fontSize:12,fontWeight:700,color:T.text}}>{selectedSvc.time}</div>
+</div>
+</div>
+<div style={{marginBottom:20}}>
+<div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:10}}>¿Qué incluye?</div>
+{selectedSvc.items.map((item,i)=>(
+<div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 0",borderBottom:`1px solid ${T.border}`}}>
+<div style={{width:24,height:24,borderRadius:8,background:selectedSvc.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:selectedSvc.color,fontWeight:700,flexShrink:0}}>✓</div>
+<span style={{fontSize:14,color:T.text}}>{item}</span>
+</div>
+))}
+</div>
+{!sent?(
+<div style={{background:T.card,borderRadius:16,padding:"20px",border:`1px solid ${T.border}`}}>
+<div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:14}}>Solicitar contacto</div>
+<input placeholder="Tu nombre" value={contactForm.name} onChange={e=>setContactForm({...contactForm,name:e.target.value})}
+style={{width:"100%",border:`1.5px solid ${T.border}`,borderRadius:10,padding:"10px 14px",fontSize:13,marginBottom:10,outline:"none"}}/>
+<input placeholder="Tu email o WhatsApp" value={contactForm.email} onChange={e=>setContactForm({...contactForm,email:e.target.value})}
+style={{width:"100%",border:`1.5px solid ${T.border}`,borderRadius:10,padding:"10px 14px",fontSize:13,marginBottom:10,outline:"none"}}/>
+<textarea placeholder="¿En qué necesitás ayuda?" value={contactForm.msg} onChange={e=>setContactForm({...contactForm,msg:e.target.value})} rows={3}
+style={{width:"100%",border:`1.5px solid ${T.border}`,borderRadius:10,padding:"10px 14px",fontSize:13,resize:"none",outline:"none",marginBottom:10}}/>
+<button onClick={()=>setSent(true)} style={{width:"100%",background:selectedSvc.color,color:"#fff",border:"none",borderRadius:12,padding:"14px",fontSize:14,fontWeight:700,cursor:"pointer"}}>
+Solicitar →
+</button>
+</div>
+):(
+<div style={{background:"#d4edda",borderRadius:16,padding:"24px",textAlign:"center"}}>
+<div style={{fontSize:36,marginBottom:8}}>✅</div>
+<div style={{fontSize:16,fontWeight:700,color:T.success,marginBottom:4}}>¡Solicitud enviada!</div>
+<div style={{fontSize:13,color:"#2a7d46"}}>Un asesor se contactará con vos en menos de 24 horas.</div>
+</div>
+)}
+</div>
+);
+if(selectedTranslator) return(
+<div style={{padding:"20px"}}>
+<button onClick={()=>setSelectedTranslator(null)} style={{background:T.light,border:"none",borderRadius:10,padding:"8px 14px",cursor:"pointer",fontSize:13,marginBottom:20,fontFamily:"inherit"}}>← Volver</button>
+<div style={{textAlign:"center",marginBottom:24}}>
+<div style={{fontSize:56,marginBottom:8}}>{selectedTranslator.avatar}</div>
+<div style={{fontSize:20,fontWeight:800,color:T.text}}>{selectedTranslator.name}</div>
+<div style={{fontSize:13,color:T.muted,marginTop:4}}>{selectedTranslator.specialty}</div>
+<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,marginTop:8}}>
+<span style={{color:"#f59e0b",fontSize:14}}>{"⭐".repeat(Math.floor(selectedTranslator.rating))}</span>
+<span style={{fontSize:13,fontWeight:700,color:T.text}}>{selectedTranslator.rating}</span>
+<span style={{fontSize:13,color:T.muted}}>({selectedTranslator.reviews} reseñas)</span>
+</div>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:20}}>
+<div style={{background:T.card,borderRadius:12,padding:"14px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+<div style={{fontSize:11,color:T.muted,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Tarifa</div>
+<div style={{fontSize:14,fontWeight:700,color:"#1a3a5c"}}>{selectedTranslator.rate}</div>
+</div>
+<div style={{background:T.card,borderRadius:12,padding:"14px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+<div style={{fontSize:11,color:T.muted,fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Modalidad</div>
+<div style={{fontSize:12,fontWeight:700,color:T.text}}>{selectedTranslator.mode.join(" · ")}</div>
+</div>
+</div>
+<div style={{marginBottom:20}}>
+<div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:10}}>Idiomas</div>
+<div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+{selectedTranslator.langs.map(l=>(
+<span key={l} style={{background:"#dbeafe",color:"#1a3a5c",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600}}>{l}</span>
+))}
+</div>
+</div>
+{!sent?(
+<div style={{background:T.card,borderRadius:16,padding:"20px",border:`1px solid ${T.border}`}}>
+<div style={{fontSize:14,fontWeight:700,color:T.text,marginBottom:14}}>Reservar sesión</div>
+<input placeholder="Tu nombre" value={contactForm.name} onChange={e=>setContactForm({...contactForm,name:e.target.value})}
+style={{width:"100%",border:`1.5px solid ${T.border}`,borderRadius:10,padding:"10px 14px",fontSize:13,marginBottom:10,outline:"none"}}/>
+<input placeholder="Tu email o WhatsApp" value={contactForm.email} onChange={e=>setContactForm({...contactForm,email:e.target.value})}
+style={{width:"100%",border:`1.5px solid ${T.border}`,borderRadius:10,padding:"10px 14px",fontSize:13,marginBottom:10,outline:"none"}}/>
+<textarea placeholder="¿Para qué necesitás la traducción?" value={contactForm.msg} onChange={e=>setContactForm({...contactForm,msg:e.target.value})} rows={3}
+style={{width:"100%",border:`1.5px solid ${T.border}`,borderRadius:10,padding:"10px 14px",fontSize:13,resize:"none",outline:"none",marginBottom:10}}/>
+<button onClick={()=>setSent(true)} style={{width:"100%",background:"#1a3a5c",color:"#fff",border:"none",borderRadius:12,padding:"14px",fontSize:14,fontWeight:700,cursor:"pointer"}}>
+Reservar sesión →
+</button>
+</div>
+):(
+<div style={{background:"#d4edda",borderRadius:16,padding:"24px",textAlign:"center"}}>
+<div style={{fontSize:36,marginBottom:8}}>✅</div>
+<div style={{fontSize:16,fontWeight:700,color:T.success,marginBottom:4}}>¡Reserva confirmada!</div>
+<div style={{fontSize:13,color:"#2a7d46"}}>{selectedTranslator.name} se contactará con vos en las próximas horas.</div>
+</div>
+)}
+</div>
+);
+return(
+<div>
+<div style={{background:"linear-gradient(135deg,#1a3a5c,#7c2d12)",padding:"28px 20px 20px"}}>
+<div style={{fontSize:11,fontWeight:700,letterSpacing:3,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",marginBottom:6}}>Paraguay 🇵🇾</div>
+<div style={{fontSize:22,fontWeight:800,color:"#fff",marginBottom:4}}>Centro de Servicios</div>
+<div style={{fontSize:13,color:"rgba(255,255,255,0.75)"}}>Invertí en Paraguay. Nosotros te acompañamos.</div>
+</div>
+<div style={{display:"flex",borderBottom:`1px solid ${T.border}`,background:"#fff",position:"sticky",top:0,zIndex:10}}>
+{[{k:"servicios",l:"Gestiones"},{k:"traductores",l:"Traductores"},{k:"empleo",l:"💼 Empleo"}].map(tab=>(
+<button key={tab.k} onClick={()=>setActiveTab(tab.k)}
+style={{flex:1,padding:"12px 4px",border:"none",background:"transparent",fontSize:11,fontWeight:700,cursor:"pointer",color:activeTab===tab.k?"#1a3a5c":T.muted,borderBottom:activeTab===tab.k?"2.5px solid #1a3a5c":"2.5px solid transparent"}}>
+{tab.l}
+</button>
+))}
+</div>
+{activeTab==="servicios"&&(
+<div style={{padding:"20px"}}>
+<div style={{background:"linear-gradient(135deg,#1a3a5c,#0f172a)",borderRadius:16,padding:"18px 20px",marginBottom:16}}>
+<div style={{fontSize:12,fontWeight:700,letterSpacing:2,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",marginBottom:8}}>🔒 Plataforma segura para inversores</div>
+<div style={{fontSize:14,fontWeight:700,color:"#fff",marginBottom:8,lineHeight:1.4}}>Tu información está 100% protegida</div>
+<div style={{fontSize:12,color:"rgba(255,255,255,0.75)",lineHeight:1.7,marginBottom:12}}>
+Todos los proveedores de servicios en Mbo'ehàra son verificados. Tu consulta es confidencial — nunca compartimos tus datos con terceros sin tu autorización explícita.
+</div>
+<div style={{display:"flex",flexDirection:"column",gap:6}}>
+{["✅ Proveedores verificados y evaluados","🔐 Consultas 100% confidenciales","📋 Contratos transparentes","🇵🇾 Marco legal paraguayo vigente","⭐ Reseñas reales de usuarios"].map((item,i)=>(
+<div key={i} style={{fontSize:12,color:"rgba(255,255,255,0.85)",display:"flex",alignItems:"center",gap:6}}>{item}</div>
+))}
+</div>
+</div>
+<div style={{background:"#fff9e6",borderRadius:14,padding:"14px 16px",marginBottom:16,border:"1px solid #fcd34d"}}>
+<div style={{fontSize:12,fontWeight:700,color:"#92400e",marginBottom:4}}>🌍 Para inversores extranjeros</div>
+<div style={{fontSize:12,color:"#78350f",lineHeight:1.6}}>
+Entendemos que venir a invertir en un país nuevo genera dudas. Por eso todos nuestros asesores hablan <strong>inglés, portugués y francés</strong>. Tu primera consulta es gratuita y sin compromiso. Podés abandonar el proceso en cualquier momento.
+</div>
+</div>
+<div style={{fontSize:12,fontWeight:700,color:T.muted,letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>Nuestros servicios</div>
+{SERVICES.map(svc=>(
+<div key={svc.id} onClick={()=>{setSelectedSvc(svc);setSent(false);setContactForm({name:"",email:"",msg:""});}}
+style={{background:"#fff",border:`1px solid ${T.border}`,borderRadius:16,padding:"16px 18px",marginBottom:12,cursor:"pointer",display:"flex",gap:14,alignItems:"flex-start",boxShadow:"0 2px 8px rgba(0,0,0,0.05)",position:"relative",overflow:"hidden"}}>
+<div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:svc.accent,borderRadius:"16px 0 0 16px"}}/>
+<div style={{width:48,height:48,borderRadius:14,background:svc.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{svc.icon}</div>
+<div style={{flex:1}}>
+<div style={{fontWeight:700,fontSize:15,color:T.text,marginBottom:4}}>{svc.title}</div>
+<div style={{fontSize:12,color:T.muted,lineHeight:1.5,marginBottom:8}}>{svc.desc}</div>
+<div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+<span style={{background:svc.bg,color:svc.color,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}}>{svc.price}</span>
+<span style={{background:T.light,color:T.muted,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:600}}>{svc.providers} proveedores</span>
+</div>
+</div>
+<div style={{fontSize:18,color:T.muted,flexShrink:0}}>›</div>
+</div>
+))}
+</div>
+)}
+{activeTab==="traductores"&&(
+<div style={{padding:"20px"}}>
+<div style={{fontSize:12,color:T.muted,marginBottom:16}}>Traductores certificados · Online y presencial · Paraguay</div>
+{TRANSLATORS.map(tr=>(
+<div key={tr.id} onClick={()=>{setSelectedTranslator(tr);setSent(false);setContactForm({name:"",email:"",msg:""});}}
+style={{background:"#fff",border:`1.5px solid ${tr.available?T.border:"#fde8e8"}`,borderRadius:16,padding:"16px 18px",marginBottom:12,cursor:"pointer",display:"flex",gap:14,alignItems:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.05)"}}>
+<div style={{fontSize:40,flexShrink:0}}>{tr.avatar}</div>
+<div style={{flex:1}}>
+<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
+<span style={{fontWeight:700,fontSize:15,color:T.text}}>{tr.name}</span>
+<span style={{background:tr.available?"#d4edda":"#fde8e8",color:tr.available?T.success:T.error,borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700}}>{tr.available?"● Disponible":"● Ocupado"}</span>
+</div>
+<div style={{fontSize:12,color:T.muted,marginBottom:6}}>{tr.specialty}</div>
+<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:6}}>
+{tr.langs.map(l=><span key={l} style={{background:"#dbeafe",color:"#1a3a5c",borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:600}}>{l}</span>)}
+</div>
+<div style={{display:"flex",gap:8,alignItems:"center"}}>
+<span style={{fontSize:12,fontWeight:700,color:"#1a3a5c"}}>{tr.rate}</span>
+<span style={{fontSize:12,color:T.muted}}>⭐ {tr.rating} ({tr.reviews})</span>
+</div>
+</div>
+<div style={{fontSize:18,color:T.muted,flexShrink:0}}>›</div>
+</div>
+))}
+</div>
+)}
+{activeTab==="empleo"&&(
+<div style={{padding:"20px"}}>
+<div style={{background:"linear-gradient(135deg,#1a3a5c,#065f46)",borderRadius:16,padding:"18px 20px",marginBottom:16}}>
+<div style={{fontSize:12,fontWeight:700,letterSpacing:2,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",marginBottom:6}}>💼 Empleo Bilingüe</div>
+<div style={{fontSize:16,fontWeight:800,color:"#fff",marginBottom:8}}>El idioma que aprendés te consigue trabajo</div>
+<div style={{fontSize:12,color:"rgba(255,255,255,0.75)",lineHeight:1.7}}>Conectamos paraguayos certificados con empresas extranjeras que instalan sus operaciones en Paraguay. Tu certificado de Mbo'ehàra es tu carta de presentación.</div>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+{[{icon:"🇵🇾",title:"Para paraguayos",desc:"Mostrá tu certificado y accedé a ofertas de empresas internacionales"},{icon:"🌍",title:"Para empresas",desc:"Encontrá empleados bilingües certificados en Paraguay"}].map((c,i)=>(
+<div key={i} style={{background:"#fff",borderRadius:14,padding:"14px",border:`1px solid ${T.border}`,textAlign:"center"}}>
+<div style={{fontSize:28,marginBottom:6}}>{c.icon}</div>
+<div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:4}}>{c.title}</div>
+<div style={{fontSize:11,color:T.muted,lineHeight:1.5}}>{c.desc}</div>
+</div>
+))}
+</div>
+<div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>Búsquedas activas</div>
+{[
+{co:"TechCorp Brasil",icon:"💻",role:"Asistente bilingüe Español-Portugués",salary:"3.500.000 Gs/mes",langs:["Español","Português"],type:"Presencial · Asunción",hot:true},
+{co:"Agroinvest SA",icon:"🌾",role:"Coordinador comercial Español-Inglés",salary:"4.200.000 Gs/mes",langs:["Español","Inglés"],type:"Remoto",hot:true},
+{co:"Inmobiliaria Euro",icon:"🏠",role:"Asesor bilingüe Español-Francés",salary:"2.800.000 Gs/mes",langs:["Español","Français"],type:"Presencial · Asunción",hot:false},
+{co:"CryptoNode PY",icon:"⚡",role:"Técnico bilingüe Español-Inglés",salary:"5.000.000 Gs/mes",langs:["Español","Inglés"],type:"Presencial · Ciudad del Este",hot:false},
+].map((job,i)=>(
+<div key={i} style={{background:"#fff",border:`1.5px solid ${job.hot?"#f97316":T.border}`,borderRadius:16,padding:"16px 18px",marginBottom:12,cursor:"pointer",boxShadow:job.hot?"0 2px 12px rgba(249,115,22,0.12)":"0 2px 8px rgba(0,0,0,0.04)"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+<div style={{display:"flex",alignItems:"center",gap:10}}>
+<div style={{width:40,height:40,borderRadius:12,background:T.light,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>{job.icon}</div>
+<div>
+<div style={{fontSize:13,fontWeight:700,color:T.text}}>{job.role}</div>
+<div style={{fontSize:11,color:T.muted}}>{job.co}</div>
+</div>
+</div>
+{job.hot&&<span style={{background:"#f97316",color:"#fff",borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700,flexShrink:0}}>HOT 🔥</span>}
+</div>
+<div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
+{job.langs.map(l=><span key={l} style={{background:"#dbeafe",color:"#1a3a5c",borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:600}}>{l}</span>)}
+<span style={{background:T.light,color:T.muted,borderRadius:20,padding:"2px 8px",fontSize:11}}>{job.type}</span>
+</div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+<span style={{fontSize:13,fontWeight:700,color:T.success}}>{job.salary}</span>
+<button style={{background:"#1a3a5c",color:"#fff",border:"none",borderRadius:10,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>Postularme →</button>
+</div>
+</div>
+))}
+<div style={{background:"#f0fdf4",borderRadius:14,padding:"14px 16px",border:"1px solid #86efac",marginTop:4}}>
+<div style={{fontSize:12,fontWeight:700,color:"#166534",marginBottom:4}}>🏢 ¿Sos una empresa?</div>
+<div style={{fontSize:12,color:"#166534",lineHeight:1.6,marginBottom:10}}>Publicá tu búsqueda de empleados bilingües certificados. Llegás a todos los estudiantes activos de Mbo'ehàra.</div>
+<div style={{display:"flex",gap:6}}>
+<div style={{background:"#dcfce7",borderRadius:10,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#166534"}}>Publicar: 500.000 Gs</div>
+<div style={{background:"#dcfce7",borderRadius:10,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#166534"}}>Comisión contratación: 10%</div>
+</div>
+</div>
+</div>
+)}
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
+function App(){
+const [mainTab,setMainTab]=useState("aprender");
+const [screen,setScreen]=useState("home");
+const [lang,setLang]=useState(null);
+const [lesson,setLesson]=useState(null);
+const [step,setStep]=useState(0);
+const [sel,setSel]=useState(null);
+const [confirmed,setConfirmed]=useState(false);
+const [score,setScore]=useState(0);
+const [done,setDone]=useState({});
+const [adIdx,setAdIdx]=useState(0);
+const [showCert,setShowCert]=useState(false);
+const [userName,setUserName]=useState("");
+const [refCode]=useState(()=>{const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r;});
+const [copiedRef,setCopiedRef]=useState(false);
+const [user,setUser]=useState(null);
+const [showAuth,setShowAuth]=useState(false);
+const [showPrivacy,setShowPrivacy]=useState(false);
+function App(){
+const [mainTab,setMainTab]=useState("aprender");
+const [screen,setScreen]=useState("home");
+const [lang,setLang]=useState(null);
+const [lesson,setLesson]=useState(null);
+const [step,setStep]=useState(0);
+const [sel,setSel]=useState(null);
+const [confirmed,setConfirmed]=useState(false);
+const [score,setScore]=useState(0);
+const [done,setDone]=useState({});
+const [adIdx,setAdIdx]=useState(0);
+const [showCert,setShowCert]=useState(false);
+const [userName,setUserName]=useState("");
+const [refCode]=useState(()=>{const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let r="";for(let i=0;i<6;i++)r+=c[Math.floor(Math.random()*c.length)];return r;});
+const [copiedRef,setCopiedRef]=useState(false);
+const [user,setUser]=useState(null);
+const [showAuth,setShowAuth]=useState(false);
+const [showPrivacy,setShowPrivacy]=useState(false);
+const [onboarded,setOnboarded]=useState(false);
+const [onboardStep,setOnboardStep]=useState(0);
+const [profile,setProfile]=useState({goal:"",time:"",level:""});
+const [xp,setXp]=useState(0);
+const [streak,setStreak]=useState(1);
+const [lastLesson,setLastLesson]=useState(null);
+const [badges,setBadges]=useState([]);
+const BADGES=[
+{id:"first",icon:"🌟",label:"Primera lección",xp:0},
+{id:"streak3",icon:"🔥",label:"3 días seguidos",xp:30},
+{id:"guarani",icon:"🐆",label:"Guaraní completo",xp:100},
+{id:"ingles",icon:"🌎",label:"Inglés completo",xp:100},
+{id:"portugues",icon:"🌿",label:"Português completo",xp:100},
+{id:"frances",icon:"🥐",label:"Français completo",xp:100},
+{id:"espanol",icon:"💎",label:"Español completo",xp:100},
+{id:"polyglot",icon:"🏆",label:"Políglota",xp:500},
+];
+const totalXp=Object.keys(done).length*15+xp;
+const level=totalXp<50?"Principiante":totalXp<150?"Aprendiz":totalXp<400?"Intermedio":totalXp<800?"Avanzado":"Experto";
+const levelColor=totalXp<50?"#8a7f72":totalXp<150?"#3b82f6":totalXp<400?"#10b981":totalXp<800?"#f97316":"#c0392b";
+const xpToNext=totalXp<50?50:totalXp<150?150:totalXp<400?400:totalXp<800?800:9999;
+const xpPrev=totalXp<50?0:totalXp<150?50:totalXp<400?150:totalXp<800?400:800;
+const startLesson=(l,les)=>{
+setLang(l);setLesson(les);setStep(0);setSel(null);setConfirmed(false);setScore(0);
+setLastLesson({lang:l,les});setScreen("lesson");
+};
+const LANG_VOICES={guarani:"es-PY",ingles:"en-US",portugues:"pt-BR",frances:"fr-FR",espanol:"es-ES"};
+const speak=(text,langId)=>{
+if(!window.speechSynthesis)return;
+window.speechSynthesis.cancel();
+const utt=new SpeechSynthesisUtterance(text);
+utt.lang=LANG_VOICES[langId]||"es-ES";
+utt.rate=0.85;
+utt.pitch=1;
+const voices=window.speechSynthesis.getVoices();
+const match=voices.find(v=>v.lang.startsWith(utt.lang.split("-")[0]));
+if(match)utt.voice=match;
+window.speechSynthesis.speak(utt);
+};
+const vocabLen=lesson?.vocab.length||0;
+const quizLen=lesson?.quiz.length||0;
+const total=vocabLen+quizLen;
+const isVocab=step<vocabLen;
+const quizIdx=step-vocabLen;
+const pct=Math.round((step/total)*100);
+const handleAnswer=(idx)=>{if(confirmed)return;setSel(idx);setConfirmed(true);if(idx===lesson.quiz[quizIdx].ans)setScore(s=>s+1);};
+const next=()=>{
+if(step+1>=total){
+const gained=score*5+10;
+setXp(x=>x+gained);
+setDone(d=>({...d,[lesson.id]:score}));
+setAdIdx(i=>(i+1)%SPONSORS.length);
+if(!badges.includes("first"))setBadges(b=>[...b,"first"]);
+if(isLangComplete({...lang,units:lang.units}))setBadges(b=>b.includes(lang.id)?b:[...b,lang.id]);
+setScreen("complete");
+}else{setStep(s=>s+1);setSel(null);setConfirmed(false);}
+};
+const getLangProgress=(l)=>{const all=l.units.flatMap(u=>u.lessons);return{done:all.filter(les=>done[les.id]!==undefined).length,total:all.length};};
+const isLangComplete=(l)=>l.units.flatMap(u=>u.lessons).every(les=>done[les.id]!==undefined);
+const copyRef=()=>{navigator.clipboard?.writeText(`Aprendé idiomas gratis 🇵🇾 Usá mi código ${refCode} en Mbo'ehàra y desbloqueás inglés GRATIS → mboehara.py`).then(()=>{setCopiedRef(true);setTimeout(()=>setCopiedRef(false),2500);});};
+const base={fontFamily:"'Sora',sans-serif",background:T.bg,minHeight:"100vh",maxWidth:480,margin:"0 auto",paddingBottom:70};
+// ── ONBOARDING ─────────────────────────────────────────────────────────────
+if(!onboarded){
+const STEPS=[
+{q:"¿Para qué aprendés?",icon:"🎯",opts:[{v:"trabajo",l:"💼 Conseguir trabajo"},{ v:"negocios",l:"🤝 Hacer negocios"},{ v:"invertir",l:"📈 Invertir en Paraguay"},{ v:"cultura",l:"🌎 Por cultura personal"}]},
+{q:"¿Cuánto tiempo tenés por día?",icon:"⏱️",opts:[{v:"5min",l:"⚡ 5 minutos"},{v:"15min",l:"🎯 15 minutos"},{v:"30min",l:"🔥 30 minutos"},{v:"mas",l:"💪 Más de 30 min"}]},
+{q:"¿Cuál es tu nivel de español?",icon:"📊",opts:[{v:"nativo",l:"🇵🇾 Nativo / Fluido"},{v:"basico",l:"🌱 Básico"},{v:"intermedio",l:"📚 Intermedio"},{v:"cero",l:"❓ No hablo español"}]},
+];
+const cur=STEPS[onboardStep];
+return(
+<div style={{...base,display:"flex",flexDirection:"column",minHeight:"100vh",paddingBottom:0}}>
+<div style={{background:"linear-gradient(160deg,#c0392b,#1a3a5c)",padding:"40px 24px 32px",position:"relative",overflow:"hidden"}}>
+<div style={{position:"absolute",top:-40,right:-40,width:160,height:160,background:"rgba(255,255,255,0.05)",borderRadius:"50%"}}/>
+<div style={{fontSize:12,fontWeight:700,letterSpacing:3,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",marginBottom:8}}>Mbo'ehàra 🇵🇾</div>
+<div style={{fontSize:28,fontWeight:800,color:"#fff",marginBottom:6}}>Bienvenido/a 👋</div>
+<div style={{fontSize:14,color:"rgba(255,255,255,0.75)"}}>3 preguntas rápidas para personalizar tu experiencia</div>
+<div style={{display:"flex",gap:6,marginTop:16}}>
+{STEPS.map((_,i)=><div key={i} style={{height:4,flex:1,borderRadius:4,background:i<=onboardStep?"#fff":"rgba(255,255,255,0.25)"}}/>)}
+</div>
+</div>
+<div style={{flex:1,padding:"32px 24px"}}>
+<div style={{fontSize:40,marginBottom:16,textAlign:"center"}}>{cur.icon}</div>
+<div style={{fontSize:20,fontWeight:800,color:T.text,marginBottom:24,textAlign:"center",lineHeight:1.3}}>{cur.q}</div>
+<div style={{display:"flex",flexDirection:"column",gap:10}}>
+{cur.opts.map(opt=>(
+<button key={opt.v} onClick={()=>{
+const key=onboardStep===0?"goal":onboardStep===1?"time":"level";
+const newProfile={...profile,[key]:opt.v};
+setProfile(newProfile);
+if(onboardStep<2){setOnboardStep(s=>s+1);}
+else{setOnboarded(true);setStreak(1);}
+}}
+style={{background:"#fff",border:`2px solid ${T.border}`,borderRadius:14,padding:"16px 20px",cursor:"pointer",fontSize:15,fontWeight:600,color:T.text,textAlign:"left",transition:"all 0.15s"}}>
+{opt.l}
+</button>
+))}
+</div>
+</div>
+</div>
+);
+}
+// ── BOTTOM NAV ─────────────────────────────────────────────────────────────
+const BottomNav=()=>(
+<div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#fff",borderTop:`1px solid ${T.border}`,display:"flex",zIndex:50}}>
+{[{k:"aprender",icon:"📚",label:"Aprender"},{k:"traductor",icon:"🔤",label:"Traductor"},{k:"servicios",icon:"🏢",label:"Servicios"},{k:"perfil",icon:"👤",label:"Mi perfil"}].map(tab=>(
+<button key={tab.k} onClick={()=>{setMainTab(tab.k);setScreen("home");}}
+style={{flex:1,padding:"12px 4px 8px",border:"none",background:"transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+<span style={{fontSize:18}}>{tab.icon}</span>
+<span style={{fontSize:9,fontWeight:700,color:mainTab===tab.k?"#1a3a5c":T.muted,letterSpacing:0.5}}>{tab.label}</span>
+{mainTab===tab.k&&<div style={{width:20,height:2,background:"#1a3a5c",borderRadius:2}}/>}
+</button>
+))}
+</div>
+);
+// ── PERFIL / DASHBOARD TAB ─────────────────────────────────────────────────
+if(mainTab==="perfil") return(
+<div style={base}>
+<div style={{background:"linear-gradient(135deg,#1a3a5c,#c0392b)",padding:"36px 24px 28px"}}>
+<div style={{display:"flex",alignItems:"center",gap:14}}>
+<div style={{width:56,height:56,borderRadius:"50%",background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28}}>
+{user?user.name[0].toUpperCase():"👤"}
+</div>
+<div>
+<div style={{fontSize:18,fontWeight:800,color:"#fff"}}>{user?user.name:userName||"Estudiante"}</div>
+<div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginTop:2}}>{user?.country||"Paraguay"}</div>
+<div style={{fontSize:12,fontWeight:700,color:"#fcd34d",marginTop:4}}>{level} · {totalXp} XP</div>
+</div>
+</div>
+</div>
+<div style={{padding:"20px"}}>
+{/* XP BAR */}
+<div style={{background:"#fff",borderRadius:16,padding:"16px 18px",marginBottom:14,border:`1px solid ${T.border}`}}>
+<div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+<span style={{fontSize:13,fontWeight:700,color:levelColor}}>{level}</span>
+<span style={{fontSize:12,color:T.muted}}>{totalXp}/{xpToNext} XP</span>
+</div>
+<div style={{height:10,background:T.light,borderRadius:8,overflow:"hidden"}}>
+<div style={{height:"100%",width:`${Math.min(100,((totalXp-xpPrev)/(xpToNext-xpPrev))*100)}%`,background:levelColor,borderRadius:8,transition:"width 0.5s"}}/>
+</div>
+<div style={{fontSize:11,color:T.muted,marginTop:6}}>Faltan {xpToNext-totalXp} XP para el siguiente nivel</div>
+</div>
+{/* STATS */}
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
+{[
+{icon:"🔥",val:streak,label:"Racha días"},
+{icon:"📚",val:Object.keys(done).length,label:"Lecciones"},
+{icon:"⭐",val:totalXp,label:"XP Total"},
+].map((s,i)=>(
+<div key={i} style={{background:"#fff",borderRadius:14,padding:"14px 8px",textAlign:"center",border:`1px solid ${T.border}`}}>
+<div style={{fontSize:24}}>{s.icon}</div>
+<div style={{fontSize:22,fontWeight:800,color:T.text,lineHeight:1.1}}>{s.val}</div>
+<div style={{fontSize:10,color:T.muted,marginTop:2}}>{s.label}</div>
+</div>
+))}
+</div>
+{/* BADGES */}
+<div style={{background:"#fff",borderRadius:16,padding:"16px 18px",marginBottom:14,border:`1px solid ${T.border}`}}>
+<div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>🏅 Logros</div>
+<div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+{BADGES.map(b=>{
+const earned=badges.includes(b.id)||(b.id==="first"&&Object.keys(done).length>0);
+return(
+<div key={b.id} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,opacity:earned?1:0.3,width:56}}>
+<div style={{width:44,height:44,borderRadius:12,background:earned?"#fff9e6":T.light,border:`2px solid ${earned?"#f59e0b":T.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{b.icon}</div>
+<div style={{fontSize:9,color:earned?T.text:T.muted,textAlign:"center",lineHeight:1.2}}>{b.label}</div>
+</div>
+);
+})}
+</div>
+</div>
+{/* PROGRESS PER LANG */}
+<div style={{background:"#fff",borderRadius:16,padding:"16px 18px",border:`1px solid ${T.border}`}}>
+<div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:12}}>📊 Progreso por idioma</div>
+{Object.values(LANGS).map(l=>{
+const prog=getLangProgress(l);
+const pct=Math.round((prog.done/prog.total)*100);
+return(
+<div key={l.id} style={{marginBottom:12}}>
+<div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+<span style={{fontSize:13,fontWeight:600,color:T.text}}>{l.emoji} {l.name}</span>
+<span style={{fontSize:12,color:T.muted}}>{prog.done}/{prog.total}</span>
+</div>
+<div style={{height:6,background:T.light,borderRadius:4,overflow:"hidden"}}>
+<div style={{height:"100%",width:`${pct}%`,background:l.accent,borderRadius:4,transition:"width 0.5s"}}/>
+</div>
+</div>
+);
+})}
+</div>
+{!user&&(
+<button onClick={()=>setShowAuth(true)} style={{width:"100%",background:"linear-gradient(135deg,#c0392b,#1a3a5c)",color:"#fff",border:"none",borderRadius:14,padding:"16px",fontSize:15,fontWeight:700,cursor:"pointer",marginTop:14}}>
+Crear cuenta para guardar tu progreso →
+</button>
+)}
+</div>
+<BottomNav/>
+</div>
+);
+// TRADUCTOR TAB
+if(mainTab==="traductor") return <div style={base}><Translator/><BottomNav/></div>;
+// SERVICIOS TAB
+if(mainTab==="servicios") return <div style={base}><ServicesSection/><BottomNav/></div>;
+// LESSON SCREEN
+if(screen==="lesson"&&lesson&&lang){
+const cv=isVocab?lesson.vocab[step]:null;
+const cq=!isVocab?lesson.quiz[quizIdx]:null;
+return(
+<div style={{...base,display:"flex",flexDirection:"column",minHeight:"100vh",paddingBottom:0}}>
+<div style={{padding:"16px 20px 0",display:"flex",alignItems:"center",gap:12}}>
+<button onClick={()=>setScreen("language")} style={{background:T.light,border:"none",borderRadius:8,padding:"6px 12px",cursor:"pointer",fontSize:13,color:T.text}}>✕</button>
+<div style={{flex:1,height:8,background:T.light,borderRadius:8,overflow:"hidden"}}>
+<div style={{height:"100%",width:`${pct}%`,background:lang.accent,borderRadius:8,transition:"width 0.4s"}}/>
+</div>
+<span style={{fontSize:12,fontWeight:600,color:T.muted}}>{step+1}/{total}</span>
+</div>
+{isVocab&&cv&&(
+<div style={{flex:1,padding:"28px 24px",display:"flex",flexDirection:"column"}}>
+{useEffect(()=>{const t=setTimeout(()=>speak(cv.w,lang.id),400);return()=>clearTimeout(t);},[step])&&null}
+<div style={{fontSize:11,fontWeight:700,letterSpacing:2,color:lang.accent,textTransform:"uppercase",marginBottom:20}}>Vocabulario</div>
+<div style={{flex:1,background:"#fff",borderRadius:24,padding:"32px 24px",boxShadow:"0 4px 24px rgba(0,0,0,0.08)",display:"flex",flexDirection:"column",justifyContent:"center",alignItems:"center",textAlign:"center",border:"2px solid #e8e2d9"}}>
+<div style={{fontSize:(lang.id==="espanol"||lang.id==="frances")?22:34,fontWeight:800,color:lang.color,lineHeight:1.2,marginBottom:14}}>{cv.w}</div>
+<button onClick={()=>speak(cv.w,lang.id)}
+style={{background:lang.bg,border:`2px solid ${lang.accent}`,borderRadius:50,width:52,height:52,cursor:"pointer",fontSize:22,marginBottom:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+🔊
+</button>
+<div style={{fontSize:18,fontWeight:600,color:T.text,marginBottom:12}}>{cv.t}</div>
+<div style={{height:1,background:T.border,width:"60%",marginBottom:12}}/>
+<div style={{fontSize:13,color:T.muted,fontStyle:"italic",lineHeight:1.6}}>"{cv.ex}"</div>
+<button onClick={()=>speak(cv.ex,lang.id)}
+style={{marginTop:12,background:"transparent",border:`1px solid ${T.border}`,borderRadius:20,padding:"6px 16px",cursor:"pointer",fontSize:12,color:T.muted,display:"flex",alignItems:"center",gap:6}}>
+🔊 <span>Escuchar ejemplo</span>
+</button>
+</div>
+<button onClick={next} style={{marginTop:20,background:lang.color,color:"#fff",border:"none",borderRadius:16,padding:"17px",fontSize:15,fontWeight:700,cursor:"pointer"}}>
+{step+1<vocabLen?"Siguiente →":"¡Al quiz! →"}
+</button>
+</div>
+)}
+{!isVocab&&cq&&(
+<div style={{flex:1,padding:"24px",display:"flex",flexDirection:"column"}}>
+<div style={{fontSize:11,fontWeight:700,letterSpacing:2,color:lang.accent,textTransform:"uppercase",marginBottom:14}}>Pregunta {quizIdx+1}/{quizLen}</div>
+<div style={{background:"#fff",borderRadius:18,padding:"18px",marginBottom:18,boxShadow:"0 2px 12px rgba(0,0,0,0.06)",border:`1px solid ${T.border}`}}>
+<div style={{fontSize:16,fontWeight:700,color:T.text,lineHeight:1.5}}>{cq.q}</div>
+</div>
+<div style={{display:"flex",flexDirection:"column",gap:10,flex:1}}>
+{cq.opts.map((opt,i)=>{
+let bg="#fff",border=T.border,col=T.text,fw=500;
+if(confirmed){if(i===cq.ans){bg="#d4edda";border=T.success;col=T.success;fw=700;}else if(i===sel){bg="#fde8e8";border=T.error;col=T.error;}}
+else if(sel===i){bg=lang.bg;border=lang.accent;}
+return(
+<button key={i} onClick={()=>handleAnswer(i)}
+style={{background:bg,border:`2px solid ${border}`,borderRadius:14,padding:"12px 14px",cursor:confirmed?"default":"pointer",display:"flex",alignItems:"center",gap:12,textAlign:"left",transition:"all 0.15s"}}>
+<div style={{width:26,height:26,borderRadius:8,background:confirmed&&i===cq.ans?T.success:(confirmed&&i===sel?T.error:lang.color),color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,flexShrink:0}}>{OPTS[i]}</div>
+<span style={{fontSize:14,fontWeight:fw,color:col}}>{opt}</span>
+</button>
+);
+})}
+</div>
+{confirmed&&(
+<div style={{marginTop:14}}>
+<div style={{background:sel===cq.ans?"#d4edda":"#fde8e8",borderRadius:12,padding:"12px 16px",marginBottom:12,fontSize:14,fontWeight:600,color:sel===cq.ans?T.success:T.error}}>
+{sel===cq.ans?"✅ ¡Correcto!":`❌ Correcto: ${cq.opts[cq.ans]}`}
+</div>
+<button onClick={next} style={{width:"100%",background:lang.color,color:"#fff",border:"none",borderRadius:14,padding:"16px",fontSize:15,fontWeight:700,cursor:"pointer"}}>
+{step+1>=total?"Ver resultado →":"Siguiente →"}
+</button>
+</div>
+)}
+</div>
+)}
+</div>
+);
+}
+// COMPLETE SCREEN
+if(screen==="complete"&&lesson&&lang){
+const fs=done[lesson.id]??score;
+const pctS=Math.round((fs/quizLen)*100);
+const stars=pctS>=90?3:pctS>=60?2:1;
+const allFlat=lang.units.flatMap(u=>u.lessons);
+const nextLes=allFlat[allFlat.findIndex(l=>l.id===lesson.id)+1]||null;
+const langComplete=isLangComplete(lang);
+return(
+<div style={{...base,display:"flex",flexDirection:"column",alignItems:"center",padding:"44px 24px"}}>
+{showCert&&<CertModal lang={lang} name={userName} onClose={()=>setShowCert(false)}/>}
+<div style={{fontSize:60,marginBottom:10}}>{stars===3?"🏆":stars===2?"🎉":"💪"}</div>
+<div style={{fontSize:24,fontWeight:800,color:T.text,marginBottom:6}}>¡Lección completada!</div>
+<div style={{fontSize:14,color:T.muted,marginBottom:22}}>{lesson.title} · {lang.name}</div>
+<div style={{background:"#fff",borderRadius:22,padding:"22px 28px",width:"100%",marginBottom:14,boxShadow:"0 4px 20px rgba(0,0,0,0.08)",border:`1px solid ${T.border}`}}>
+<div style={{fontSize:26,marginBottom:10}}>{"⭐".repeat(stars)}</div>
+<div style={{fontSize:40,fontWeight:800,color:lang.color}}>{fs}/{quizLen}</div>
+<div style={{marginTop:10,height:8,background:T.light,borderRadius:8,overflow:"hidden"}}><div style={{height:"100%",width:`${pctS}%`,background:pctS>=60?T.success:T.error,borderRadius:8}}/></div>
+<div style={{marginTop:12,padding:"10px",background:"#fff9e6",borderRadius:12,fontSize:13,fontWeight:600,color:"#b07800"}}>+{stars*10} XP ✨</div>
+</div>
+{langComplete&&(
+<div style={{width:"100%",background:"linear-gradient(135deg,#d4edda,#b7dfc4)",borderRadius:16,padding:"16px",marginBottom:12,textAlign:"left"}}>
+<div style={{fontSize:14,fontWeight:700,color:"#1b4332",marginBottom:8}}>🎉 ¡Completaste {lang.name}!</div>
+<input placeholder="Tu nombre para el certificado..." value={userName} onChange={e=>setUserName(e.target.value)}
+style={{width:"100%",border:"1.5px solid #52b788",borderRadius:10,padding:"9px 12px",fontSize:13,marginBottom:8,outline:"none"}}/>
+<button onClick={()=>setShowCert(true)} style={{width:"100%",background:"#1b4332",color:"#fff",border:"none",borderRadius:12,padding:"12px",fontSize:14,fontWeight:700,cursor:"pointer"}}>🏅 Obtener Certificado</button>
+</div>
+)}
+<AdBanner idx={adIdx}/>
+{nextLes&&<button onClick={()=>startLesson(lang,nextLes)} style={{width:"100%",background:lang.color,color:"#fff",border:"none",borderRadius:16,padding:"17px",fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:10}}>Siguiente: {nextLes.title} →</button>}
+<button onClick={()=>setScreen("language")} style={{width:"100%",background:"transparent",color:T.muted,border:`1.5px solid ${T.border}`,borderRadius:16,padding:"15px",fontSize:14,fontWeight:600,cursor:"pointer",marginBottom:8}}>Ver todas las lecciones</button>
+<BottomNav/>
+</div>
+);
+}
+// LANGUAGE SCREEN
+if(screen==="language"&&lang){
+const allFlat=lang.units.flatMap(u=>u.lessons);
+const doneCount=allFlat.filter(l=>done[l.id]!==undefined).length;
+const isLocked=(ui,li)=>{if(ui===0&&li===0)return false;if(li===0){return lang.units[ui-1].lessons.some(l=>done[l.id]===undefined);}return done[lang.units[ui].lessons[li-1].id]===undefined;};
+return(
+<div style={base}>
+{showCert&&<CertModal lang={lang} name={userName} onClose={()=>setShowCert(false)}/>}
+<div style={{background:lang.color,padding:"20px 20px 24px"}}>
+<button onClick={()=>setScreen("home")} style={{background:"rgba(255,255,255,0.15)",border:"none",color:"#fff",borderRadius:10,padding:"6px 14px",cursor:"pointer",fontSize:13,marginBottom:16}}>← Inicio</button>
+<div style={{display:"flex",alignItems:"center",gap:12}}>
+<div style={{width:50,height:50,borderRadius:14,background:lang.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>{lang.emoji}</div>
+<div>
+<div style={{display:"flex",alignItems:"center",gap:8}}>
+<span style={{fontSize:22,fontWeight:800,color:"#fff"}}>{lang.name}</span>
+{lang.premium&&<span style={{background:"#f97316",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20}}>PREMIUM</span>}
+</div>
+<div style={{fontSize:12,color:"rgba(255,255,255,0.7)"}}>{doneCount}/{allFlat.length} lecciones</div>
+</div>
+</div>
+</div>
+{isLangComplete(lang)&&(
+<div style={{margin:"16px 20px 0",background:"linear-gradient(135deg,#d4edda,#b7dfc4)",borderRadius:16,padding:"14px 16px"}}>
+<div style={{fontSize:13,fontWeight:700,color:"#1b4332",marginBottom:8}}>🎉 ¡Completaste {lang.name}!</div>
+<input placeholder="Tu nombre..." value={userName} onChange={e=>setUserName(e.target.value)} style={{width:"100%",border:"1.5px solid #52b788",borderRadius:10,padding:"9px 12px",fontSize:13,marginBottom:8,outline:"none"}}/>
+<button onClick={()=>setShowCert(true)} style={{width:"100%",background:"#1b4332",color:"#fff",border:"none",borderRadius:12,padding:"11px",fontSize:13,fontWeight:700,cursor:"pointer"}}>🏅 Obtener Certificado</button>
+</div>
+)}
+<div style={{padding:"16px 20px 32px"}}>
+{lang.units.map((unit,ui)=>(
+<div key={ui} style={{marginBottom:22}}>
+<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+<div style={{height:1,flex:1,background:T.border}}/>
+<span style={{fontSize:11,fontWeight:700,color:T.muted,letterSpacing:1,textTransform:"uppercase"}}>Unidad {ui+1} · {unit.title}</span>
+<div style={{height:1,flex:1,background:T.border}}/>
+</div>
+{unit.lessons.map((les,li)=>{
+const isDone=done[les.id]!==undefined;
+const locked=isLocked(ui,li);
+const lesNum=lang.units.slice(0,ui).reduce((a,u)=>a+u.lessons.length,0)+li+1;
+return(
+<div key={les.id} onClick={()=>!locked&&startLesson(lang,les)}
+style={{background:"#fff",border:`1.5px solid ${isDone?lang.accent:T.border}`,borderRadius:14,padding:"13px 16px",marginBottom:10,cursor:locked?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:12,opacity:locked?0.45:1}}>
+<div style={{width:40,height:40,borderRadius:12,background:isDone?lang.bg:T.light,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{locked?"🔒":les.icon}</div>
+<div style={{flex:1}}>
+<div style={{fontWeight:600,fontSize:14,color:T.text}}>Lección {lesNum}: {les.title}</div>
+<div style={{fontSize:11,color:T.muted,marginTop:2}}>{les.vocab.length} palabras · {les.quiz.length} preguntas</div>
+</div>
+{isDone&&<span style={{background:lang.accent,color:"#fff",borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700}}>✓ {done[les.id]}/{les.quiz.length}</span>}
+{!isDone&&!locked&&<span style={{fontSize:18,color:T.muted}}>›</span>}
+</div>
+);
+})}
+</div>
+))}
+</div>
+<BottomNav/>
+</div>
+);
+}
+// HOME SCREEN
+return(
+<div style={base}>
+{showCert&&lang&&<CertModal lang={lang} name={userName} onClose={()=>setShowCert(false)}/>}
+{showAuth&&<AuthModal onClose={()=>setShowAuth(false)} onLogin={u=>{setUser(u);setUserName(u.name);setShowAuth(false);}}/>}
+{showPrivacy&&<PrivacyPolicy onClose={()=>setShowPrivacy(false)}/>}
+<div style={{background:"linear-gradient(160deg,#c0392b 0%,#1a3a5c 100%)",padding:"44px 24px 36px",position:"relative",overflow:"hidden"}}>
+<div style={{position:"absolute",top:-50,right:-50,width:180,height:180,background:"rgba(255,255,255,0.05)",borderRadius:"50%"}}/>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",position:"relative"}}>
+<div>
+<div style={{fontSize:12,fontWeight:700,letterSpacing:3,color:"rgba(255,255,255,0.6)",marginBottom:8,textTransform:"uppercase"}}>Paraguay 🇵🇾</div>
+<div style={{fontSize:34,fontWeight:800,color:"#fff",lineHeight:1.1,marginBottom:6}}>Mbo'ehàra</div>
+<div style={{fontSize:14,color:"rgba(255,255,255,0.8)",fontWeight:500}}>Del Paraguay al mundo.</div>
+</div>
+{user?(
+<div style={{background:"rgba(255,255,255,0.15)",borderRadius:14,padding:"8px 14px",textAlign:"right"}}>
+<div style={{fontSize:12,fontWeight:700,color:"#fff"}}>{user.name.split(" ")[0]}</div>
+<div style={{fontSize:10,color:"rgba(255,255,255,0.65)"}}>{user.country}</div>
+<button onClick={()=>setUser(null)} style={{background:"none",border:"none",color:"rgba(255,255,255,0.5)",fontSize:10,cursor:"pointer",marginTop:2}}>Salir</button>
+</div>
+):(
+<button onClick={()=>setShowAuth(true)}
+style={{background:"rgba(255,255,255,0.2)",border:"1.5px solid rgba(255,255,255,0.4)",borderRadius:12,padding:"10px 16px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,flexShrink:0}}>
+Entrar / Registro
+</button>
+)}
+</div>
+</div>
+<div style={{margin:"20px 20px 0",background:"linear-gradient(135deg,#1a3a5c,#c0392b)",borderRadius:16,padding:"14px 16px"}}>
+<div style={{fontSize:11,fontWeight:700,letterSpacing:1,color:"rgba(255,255,255,0.65)",textTransform:"uppercase",marginBottom:6}}>🎁 Tu código de referido</div>
+<div style={{display:"flex",alignItems:"center",gap:10}}>
+<div style={{flex:1,background:"rgba(255,255,255,0.15)",borderRadius:10,padding:"10px 14px",fontSize:20,fontWeight:800,color:"#fff",letterSpacing:3}}>{refCode}</div>
+<button onClick={copyRef} style={{background:copiedRef?"#2a7d46":"rgba(255,255,255,0.2)",border:"none",borderRadius:10,padding:"10px 14px",cursor:"pointer",fontSize:12,fontWeight:700,color:"#fff",transition:"background 0.2s"}}>
+{copiedRef?"✓ Copiado":"Compartir"}
+</button>
+</div>
+<div style={{fontSize:11,color:"rgba(255,255,255,0.55)",marginTop:8}}>Compartís → tu amigo desbloquea inglés gratis → vos ganás XP 🔥</div>
+</div>
+<div style={{padding:"20px 20px 0"}}>
+<div style={{fontSize:12,fontWeight:700,color:T.muted,letterSpacing:1,textTransform:"uppercase",marginBottom:14}}>Elegí tu idioma</div>
+{lastLesson&&(
+<div onClick={()=>startLesson(lastLesson.lang,lastLesson.les)}
+style={{background:`linear-gradient(135deg,${lastLesson.lang.color},${lastLesson.lang.color}cc)`,borderRadius:16,padding:"16px 18px",marginBottom:16,cursor:"pointer",display:"flex",alignItems:"center",gap:14}}>
+<div style={{width:48,height:48,borderRadius:14,background:"rgba(255,255,255,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>{lastLesson.les.icon}</div>
+<div style={{flex:1}}>
+<div style={{fontSize:11,fontWeight:700,letterSpacing:1,color:"rgba(255,255,255,0.65)",textTransform:"uppercase",marginBottom:3}}>▶ Continuar donde dejaste</div>
+<div style={{fontSize:15,fontWeight:700,color:"#fff"}}>{lastLesson.les.title}</div>
+<div style={{fontSize:12,color:"rgba(255,255,255,0.75)"}}>{lastLesson.lang.name}</div>
+</div>
+<div style={{fontSize:22,color:"rgba(255,255,255,0.7)"}}>›</div>
+</div>
+)}
+{Object.values(LANGS).map(l=>{
+const prog=getLangProgress(l);
+return(
+<div key={l.id} onClick={()=>{setLang(l);setScreen("language");}}
+style={{background:"#fff",border:`1px solid ${l.premium?"#f97316":T.border}`,borderRadius:16,padding:"14px 16px",marginBottom:12,cursor:"pointer",display:"flex",alignItems:"center",gap:14,boxShadow:l.premium?"0 2px 12px rgba(249,115,22,0.15)":"0 2px 8px rgba(0,0,0,0.05)",position:"relative",overflow:"hidden"}}>
+<div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:l.accent,borderRadius:"16px 0 0 16px"}}/>
+<div style={{width:48,height:48,borderRadius:14,background:l.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>{l.emoji}</div>
+<div style={{flex:1}}>
+<div style={{display:"flex",alignItems:"center",gap:8}}>
+<span style={{fontWeight:700,fontSize:15,color:T.text}}>{l.name}</span>
+{l.premium&&<span style={{background:"#f97316",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20}}>PREMIUM</span>}
+{isLangComplete(l)&&<span style={{background:"#2a7d46",color:"#fff",fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20}}>✓</span>}
+</div>
+<div style={{fontSize:12,color:T.muted,marginTop:2}}>{l.tagline}</div>
+<div style={{marginTop:8,height:4,background:T.light,borderRadius:4}}><div style={{height:"100%",width:`${(prog.done/prog.total)*100}%`,background:l.accent,borderRadius:4,transition:"width 0.6s"}}/></div>
+<div style={{fontSize:11,color:T.muted,marginTop:3}}>{prog.done}/{prog.total} lecciones</div>
+</div>
+<div style={{fontSize:18,color:T.muted}}>›</div>
+</div>
+);
+})}
+<AdBanner idx={0}/>
+<AdBanner idx={3}/>
+</div>
+<div style={{padding:"8px 20px 16px",textAlign:"center"}}>
+<div style={{fontSize:12,color:T.muted,background:T.light,borderRadius:20,padding:"8px 20px",display:"inline-block",marginBottom:10}}>✨ Gratis · Sin registro · Para todos</div>
+<div style={{display:"flex",justifyContent:"center",gap:16}}>
+<button onClick={()=>setShowPrivacy(true)} style={{background:"none",border:"none",fontSize:11,color:T.muted,cursor:"pointer",textDecoration:"underline"}}>🔒 Política de Privacidad</button>
+<button onClick={()=>setShowPrivacy(true)} style={{background:"none",border:"none",fontSize:11,color:T.muted,cursor:"pointer",textDecoration:"underline"}}>Términos de Uso</button>
+</div>
+</div>
+<BottomNav/>
+</div>
+);
+}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
